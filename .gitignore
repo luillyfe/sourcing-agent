@@ -8,6 +8,7 @@
 *.so
 *.dylib
 linkedin-headline
+sourcing-agent
 
 # Test binary, built with `go test -c`
 *.test
