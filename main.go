@@ -123,25 +123,15 @@ Respond with ONLY the headline text, nothing else.`, userText)
 	return "", fmt.Errorf("no content in API response")
 }
 
-func main() {
-	// Load environment variables from .env file
-	if err := godotenv.Load(); err != nil {
-		fmt.Println("Warning: .env file not found, using system environment variables")
+func readSingleLine() string {
+	scanner := bufio.NewScanner(os.Stdin)
+	if scanner.Scan() {
+		return strings.TrimSpace(scanner.Text())
 	}
+	return ""
+}
 
-	// Get API key from environment
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	if apiKey == "" {
-		fmt.Println("Error: ANTHROPIC_API_KEY environment variable is not set")
-		fmt.Println("Please create a .env file with your API key or set it as an environment variable")
-		os.Exit(1)
-	}
-
-	fmt.Println("=== LinkedIn Headline Generator ===")
-	fmt.Println("Enter your professional background (press Enter twice when done):")
-	fmt.Println()
-
-	// Read multi-line input from user
+func readMultiLine() string {
 	scanner := bufio.NewScanner(os.Stdin)
 	var lines []string
 	emptyLineCount := 0
@@ -159,12 +149,15 @@ func main() {
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		fmt.Printf("Error reading input: %v\n", err)
-		os.Exit(1)
-	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
 
-	userText := strings.TrimSpace(strings.Join(lines, "\n"))
+func runLinkedInHeadlineWorkflow(apiKey string) {
+	fmt.Println("\n=== LinkedIn Headline Generator ===")
+	fmt.Println("Enter your professional background (press Enter twice when done):")
+	fmt.Println()
+
+	userText := readMultiLine()
 	if userText == "" {
 		fmt.Println("Error: No input provided")
 		os.Exit(1)
@@ -173,17 +166,65 @@ func main() {
 	fmt.Println("\nGenerating your LinkedIn headline...")
 	fmt.Println()
 
-	// Generate the LinkedIn headline
 	headline, err := generateLinkedInHeadline(apiKey, userText)
 	if err != nil {
 		fmt.Printf("Error generating headline: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Display the result
 	fmt.Println("✓ Generated LinkedIn Headline:")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println(headline)
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Printf("\nCharacter count: %d/220\n", len(headline))
+}
+
+func main() {
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		fmt.Println("Warning: .env file not found, using system environment variables")
+	}
+
+	// Get API key from environment
+	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+	if apiKey == "" {
+		fmt.Println("Error: ANTHROPIC_API_KEY environment variable is not set")
+		fmt.Println("Please create a .env file with your API key or set it as an environment variable")
+		os.Exit(1)
+	}
+
+	// Display menu
+	fmt.Println("╔════════════════════════════════════════════════════╗")
+	fmt.Println("║         AI-Powered Sourcing Agent                  ║")
+	fmt.Println("╚════════════════════════════════════════════════════╝")
+	fmt.Println()
+	fmt.Println("Select a workflow:")
+	fmt.Println("  1. LinkedIn Headline Generator")
+	fmt.Println("  2. Developer Search (GitHub)")
+	fmt.Println()
+	fmt.Print("Enter your choice (1 or 2): ")
+
+	choice := readSingleLine()
+
+	switch choice {
+	case "1":
+		runLinkedInHeadlineWorkflow(apiKey)
+	case "2":
+		fmt.Println("\n=== Developer Search ===")
+		fmt.Print("Enter your search query (e.g., 'Find Go developers in Lima with microservices experience'): ")
+		query := readSingleLine()
+
+		if query == "" {
+			fmt.Println("Error: No query provided")
+			os.Exit(1)
+		}
+
+		if err := runDeveloperSearchWorkflow(apiKey, query); err != nil {
+			fmt.Printf("Error running developer search: %v\n", err)
+			os.Exit(1)
+		}
+	default:
+		fmt.Println("Invalid choice. Please select 1 or 2.")
+		os.Exit(1)
+	}
 }
