@@ -14,11 +14,9 @@ import (
 )
 
 const (
-	anthropicAPIURL  = "https://api.anthropic.com/v1/messages"
-	githubAPIURL     = "https://api.github.com/search/users"
-	githubUserAPIURL = "https://api.github.com/users"
-	modelName        = "claude-sonnet-4-20250514"
-	maxTokens        = 4096
+	anthropicAPIURL = "https://api.anthropic.com/v1/messages"
+	modelName       = "claude-sonnet-4-20250514"
+	maxTokens       = 4096
 )
 
 // ============================================================================
