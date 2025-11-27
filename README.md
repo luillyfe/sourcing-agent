@@ -1,10 +1,10 @@
 # GitHub Developer Sourcing Agent - Stage 1
 
-A Go-based AI agent that searches GitHub for developers matching hiring requirements using Claude Sonnet 4.5 and the Augmented LLM pattern.
+A Go-based AI agent that searches GitHub for developers matching hiring requirements using Claude Sonnet 4.5 / Gemini 3 Pro and the Augmented LLM pattern.
 
 ## Overview
 
-This is a **Stage 1 Single-Shot Sourcing Agent** - the simplest possible implementation of an AI-powered developer sourcing system. It uses the **Augmented LLM pattern** where Claude has access to tools and can search GitHub in a single conversation turn.
+This is a **Stage 1: Single-Shot Sourcing Agent** - the simplest possible implementation of an AI-powered developer sourcing system. It uses the **Augmented LLM pattern** where Claude has access to tools and can search GitHub in a single conversation turn.
 
 ### What Makes This Stage 1?
 
