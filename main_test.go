@@ -12,8 +12,16 @@ import (
 // ============================================================================
 
 func TestSearchGitHubDevelopers(t *testing.T) {
-	// Create a mock GitHub API server
-	mockSearchServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Create a client with the mock server URL
+	// Note: We need to patch the GetUserDetail method or mock the user detail server response
+	// Since we can't easily patch the method on the struct in Go without interfaces,
+	// we'll rely on the fact that SearchDevelopers calls GetUserDetail which uses the same BaseURL.
+	// However, the mockSearchServer only handles the search endpoint.
+	// We need a way to route requests to the appropriate mock handler.
+
+	// Better approach: Create a single mock server that handles both endpoints
+	mux := http.NewServeMux()
+	mux.HandleFunc("/search/users", func(w http.ResponseWriter, r *http.Request) {
 		// Verify request headers
 		if r.Header.Get("Authorization") != "token test-token" {
 			t.Errorf("Expected Authorization header 'token test-token', got '%s'", r.Header.Get("Authorization"))
@@ -29,11 +37,9 @@ func TestSearchGitHubDevelopers(t *testing.T) {
 			},
 		}
 		json.NewEncoder(w).Encode(response)
-	}))
-	defer mockSearchServer.Close()
+	})
 
-	// Create a mock GitHub user detail server
-	mockUserServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/users/testuser1", func(w http.ResponseWriter, r *http.Request) {
 		// Return mock user detail response
 		response := GitHubUserDetail{
 			Login:       "testuser1",
@@ -46,31 +52,54 @@ func TestSearchGitHubDevelopers(t *testing.T) {
 			AvatarURL:   "https://avatar1.png",
 		}
 		json.NewEncoder(w).Encode(response)
-	}))
-	defer mockUserServer.Close()
+	})
 
-	// Note: In a real test, you would need to inject these mock URLs
-	// For now, this test demonstrates the structure
+	mux.HandleFunc("/users/testuser2", func(w http.ResponseWriter, r *http.Request) {
+		// Return mock user detail response
+		response := GitHubUserDetail{
+			Login:       "testuser2",
+			Name:        "Test User 2",
+			Location:    "Arequipa, Peru",
+			Bio:         "Python developer",
+			PublicRepos: 15,
+			Followers:   50,
+			HTMLURL:     "https://github.com/testuser2",
+			AvatarURL:   "https://avatar2.png",
+		}
+		json.NewEncoder(w).Encode(response)
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	// Create a client with the mock server URL
+	client := &GitHubClient{
+		BaseURL: server.URL,
+		Token:   "test-token",
+	}
 
 	t.Run("ValidInput", func(t *testing.T) {
 		input := ToolInput{
 			Language:   "go",
-			Location:   "lima",
 			MinRepos:   5,
 			MaxResults: 10,
 		}
 
-		// This would call the real GitHub API in a real test
-		// You would need to mock the HTTP client or use dependency injection
-		// For demonstration purposes, we're just testing the input validation
-		if input.Language == "" {
-			t.Error("Language should not be empty")
+		result, err := client.SearchDevelopers(input)
+		if err != nil {
+			t.Fatalf("SearchDevelopers failed: %v", err)
 		}
-		if input.MinRepos < 0 {
-			t.Error("MinRepos should not be negative")
+
+		if result.TotalFound != 2 {
+			t.Errorf("Expected 2 candidates, got %d", result.TotalFound)
 		}
-		if input.MaxResults < 0 {
-			t.Error("MaxResults should not be negative")
+
+		if len(result.Candidates) != 2 {
+			t.Errorf("Expected 2 candidates, got %d", len(result.Candidates))
+		}
+
+		if result.Candidates[0].Username != "testuser1" {
+			t.Errorf("Expected first candidate to be testuser1, got %s", result.Candidates[0].Username)
 		}
 	})
 }
@@ -101,12 +130,24 @@ func TestGetGitHubUserDetail(t *testing.T) {
 	}))
 	defer mockServer.Close()
 
-	// This test demonstrates the structure
-	// In a real implementation, you would need to inject the mock server URL
+	// Create a client with the mock server URL
+	client := &GitHubClient{
+		BaseURL: mockServer.URL,
+		Token:   "test-token",
+	}
+
 	t.Run("ValidUsername", func(t *testing.T) {
 		username := "testuser"
-		if username == "" {
-			t.Error("Username should not be empty")
+		detail, err := client.GetUserDetail(username)
+		if err != nil {
+			t.Fatalf("GetUserDetail failed: %v", err)
+		}
+
+		if detail.Login != "testuser" {
+			t.Errorf("Expected login 'testuser', got '%s'", detail.Login)
+		}
+		if detail.Name != "Test User" {
+			t.Errorf("Expected name 'Test User', got '%s'", detail.Name)
 		}
 	})
 }
@@ -116,8 +157,25 @@ func TestGetGitHubUserDetail(t *testing.T) {
 // ============================================================================
 
 func TestExecuteTool(t *testing.T) {
+	// Create a mock server for the tool execution
+	mux := http.NewServeMux()
+	mux.HandleFunc("/search/users", func(w http.ResponseWriter, r *http.Request) {
+		response := GitHubSearchResponse{
+			TotalCount: 0,
+			Items:      []GitHubUser{},
+		}
+		json.NewEncoder(w).Encode(response)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client := &GitHubClient{
+		BaseURL: server.URL,
+		Token:   "test-token",
+	}
+
 	t.Run("UnknownTool", func(t *testing.T) {
-		_, err := executeTool("test-token", "unknown_tool", map[string]interface{}{})
+		_, err := executeTool(client, "unknown_tool", map[string]interface{}{})
 		if err == nil {
 			t.Error("Expected error for unknown tool")
 		}
@@ -127,9 +185,14 @@ func TestExecuteTool(t *testing.T) {
 	})
 
 	t.Run("ValidToolName", func(t *testing.T) {
-		toolName := "search_github_developers"
-		if toolName != "search_github_developers" {
-			t.Error("Tool name should be 'search_github_developers'")
+		// We need to provide valid input for the tool
+		input := map[string]interface{}{
+			"language": "go",
+		}
+
+		_, err := executeTool(client, "search_github_developers", input)
+		if err != nil {
+			t.Errorf("Expected success, got error: %v", err)
 		}
 	})
 }
@@ -188,10 +251,10 @@ func TestContentBlock(t *testing.T) {
 
 	t.Run("ToolUseBlock", func(t *testing.T) {
 		block := ContentBlock{
-			Type:  "tool_use",
-			ID:    "toolu_123",
-			Name:  "search_github_developers",
-			Input: map[string]interface{}{"language": "go"},
+			Type: "tool_use",
+			// ID:    "toolu_123",
+			Name: "search_github_developers",
+			// Input: map[string]interface{}{"language": "go"},
 		}
 		if block.Type != "tool_use" {
 			t.Errorf("Expected type 'tool_use', got '%s'", block.Type)
@@ -205,7 +268,7 @@ func TestContentBlock(t *testing.T) {
 		block := ContentBlock{
 			Type:      "tool_result",
 			ToolUseID: "toolu_123",
-			Content:   `{"candidates": []}`,
+			// Content:   `{"candidates": []}`,
 		}
 		if block.Type != "tool_result" {
 			t.Errorf("Expected type 'tool_result', got '%s'", block.Type)
@@ -223,9 +286,9 @@ func TestContentBlock(t *testing.T) {
 func TestToolInput(t *testing.T) {
 	t.Run("ValidInput", func(t *testing.T) {
 		input := ToolInput{
-			Language:   "go",
-			Location:   "lima",
-			Keywords:   "microservices",
+			Language: "go",
+			Location: "lima",
+			// Keywords:   "microservices",
 			MinRepos:   5,
 			MaxResults: 10,
 		}
@@ -272,14 +335,14 @@ func TestToolInput(t *testing.T) {
 func TestCandidate(t *testing.T) {
 	t.Run("ValidCandidate", func(t *testing.T) {
 		candidate := Candidate{
-			Username:    "testuser",
-			Name:        "Test User",
-			Location:    "Lima, Peru",
-			Bio:         "Go developer",
+			Username: "testuser",
+			// Name:        "Test User",
+			// Location:    "Lima, Peru",
+			// Bio:         "Go developer",
 			PublicRepos: 25,
-			Followers:   100,
-			GitHubURL:   "https://github.com/testuser",
-			AvatarURL:   "https://avatar.png",
+			// Followers:   100,
+			// GitHubURL:   "https://github.com/testuser",
+			// AvatarURL:   "https://avatar.png",
 		}
 
 		if candidate.Username != "testuser" {
@@ -327,10 +390,10 @@ func TestSearchResult(t *testing.T) {
 				{Username: "user2", Name: "User 2"},
 			},
 			TotalFound: 2,
-			SearchCriteria: map[string]interface{}{
-				"language": "go",
-				"location": "lima",
-			},
+			// SearchCriteria: map[string]interface{}{
+			// 	"language": "go",
+			// 	"location": "lima",
+			// },
 		}
 
 		if result.TotalFound != 2 {

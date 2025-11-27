@@ -153,11 +153,25 @@ type ToolInput struct {
 }
 
 // ============================================================================
-// GITHUB API FUNCTIONS
+// GITHUB API CLIENT
 // ============================================================================
 
-// searchGitHubDevelopers searches GitHub for developers matching criteria
-func searchGitHubDevelopers(githubToken string, input ToolInput) (*SearchResult, error) {
+// GitHubClient handles interactions with the GitHub API
+type GitHubClient struct {
+	BaseURL string
+	Token   string
+}
+
+// NewGitHubClient creates a new GitHubClient
+func NewGitHubClient(token string) *GitHubClient {
+	return &GitHubClient{
+		BaseURL: "https://api.github.com",
+		Token:   token,
+	}
+}
+
+// SearchDevelopers searches GitHub for developers matching criteria
+func (c *GitHubClient) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 	// Set defaults
 	if input.MinRepos == 0 {
 		input.MinRepos = 5
@@ -179,14 +193,15 @@ func searchGitHubDevelopers(githubToken string, input ToolInput) (*SearchResult,
 	query := strings.Join(queryParts, "+")
 
 	// Call GitHub Search API
-	url := fmt.Sprintf("%s?q=%s&per_page=%d", githubAPIURL, query, input.MaxResults)
+	// Note: We use the BaseURL from the client
+	url := fmt.Sprintf("%s/search/users?q=%s&per_page=%d", c.BaseURL, query, input.MaxResults)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("token %s", githubToken))
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", c.Token))
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -217,7 +232,7 @@ func searchGitHubDevelopers(githubToken string, input ToolInput) (*SearchResult,
 			break
 		}
 
-		detail, err := getGitHubUserDetail(githubToken, user.Login)
+		detail, err := c.GetUserDetail(user.Login)
 		if err != nil {
 			// Log error but continue with other users
 			fmt.Fprintf(os.Stderr, "Warning: failed to get details for user %s: %v\n", user.Login, err)
@@ -251,10 +266,10 @@ func searchGitHubDevelopers(githubToken string, input ToolInput) (*SearchResult,
 		Candidates: candidates,
 		TotalFound: len(candidates),
 		SearchCriteria: map[string]interface{}{
-			"language":   input.Language,
-			"location":   input.Location,
-			"keywords":   input.Keywords,
-			"min_repos":  input.MinRepos,
+			"language":    input.Language,
+			"location":    input.Location,
+			"keywords":    input.Keywords,
+			"min_repos":   input.MinRepos,
 			"max_results": input.MaxResults,
 		},
 	}
@@ -262,16 +277,17 @@ func searchGitHubDevelopers(githubToken string, input ToolInput) (*SearchResult,
 	return result, nil
 }
 
-// getGitHubUserDetail retrieves detailed information for a GitHub user
-func getGitHubUserDetail(githubToken, username string) (*GitHubUserDetail, error) {
-	url := fmt.Sprintf("%s/%s", githubUserAPIURL, username)
+// GetUserDetail retrieves detailed information for a GitHub user
+func (c *GitHubClient) GetUserDetail(username string) (*GitHubUserDetail, error) {
+	// Note: We use the BaseURL from the client
+	url := fmt.Sprintf("%s/users/%s", c.BaseURL, username)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("token %s", githubToken))
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", c.Token))
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -303,7 +319,7 @@ func getGitHubUserDetail(githubToken, username string) (*GitHubUserDetail, error
 // ============================================================================
 
 // executeTool executes a tool call and returns the result
-func executeTool(githubToken, toolName string, toolInput interface{}) (string, error) {
+func executeTool(githubClient *GitHubClient, toolName string, toolInput interface{}) (string, error) {
 	if toolName != "search_github_developers" {
 		return "", fmt.Errorf("unknown tool: %s", toolName)
 	}
@@ -320,7 +336,7 @@ func executeTool(githubToken, toolName string, toolInput interface{}) (string, e
 	}
 
 	// Execute the search
-	result, err := searchGitHubDevelopers(githubToken, input)
+	result, err := githubClient.SearchDevelopers(input)
 	if err != nil {
 		return "", fmt.Errorf("failed to search GitHub developers: %w", err)
 	}
@@ -426,7 +442,7 @@ func callAnthropicAPI(apiKey string, messages []Message, tools []Tool) (*Anthrop
 // ============================================================================
 
 // runSourcingAgent executes the sourcing agent with a user query
-func runSourcingAgent(anthropicKey, githubToken, query string) (string, error) {
+func runSourcingAgent(anthropicKey string, githubClient *GitHubClient, query string) (string, error) {
 	// System prompt
 	systemPrompt := `You are a developer sourcing assistant. Your job is to search GitHub for developers matching hiring requirements.
 
@@ -464,7 +480,7 @@ Keep it simple. One search, one response.`
 		for _, block := range response.Content {
 			if block.Type == "tool_use" {
 				// Execute the tool
-				result, err := executeTool(githubToken, block.Name, block.Input)
+				result, err := executeTool(githubClient, block.Name, block.Input)
 				if err != nil {
 					return "", fmt.Errorf("failed to execute tool %s: %w", block.Name, err)
 				}
@@ -566,8 +582,11 @@ func main() {
 	fmt.Println("Searching...")
 	fmt.Println()
 
+	// Initialize GitHub client
+	githubClient := NewGitHubClient(githubToken)
+
 	// Run the sourcing agent
-	result, err := runSourcingAgent(anthropicKey, githubToken, query)
+	result, err := runSourcingAgent(anthropicKey, githubClient, query)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
