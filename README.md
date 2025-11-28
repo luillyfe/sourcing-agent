@@ -1,32 +1,32 @@
 # GitHub Developer Sourcing Agent - Stage 1
 
-A Go-based AI agent that searches GitHub for developers matching hiring requirements using Claude Sonnet 4.5 / Gemini 3 Pro and the Augmented LLM pattern.
+A Go-based AI agent that searches GitHub for developers matching hiring requirements using **Gemini 3 Pro** on **Google Cloud Vertex AI** and the Augmented LLM pattern.
 
 ## Overview
 
-This is a **Stage 1: Single-Shot Sourcing Agent** - the simplest possible implementation of an AI-powered developer sourcing system. It uses the **Augmented LLM pattern** where Claude has access to tools and can search GitHub in a single conversation turn.
+This is a **Stage 1: Single-Shot Sourcing Agent** - the simplest possible implementation of an AI-powered developer sourcing system. It uses the **Augmented LLM pattern** where Gemini has access to tools and can search GitHub in a single conversation turn.
 
 ### What Makes This Stage 1?
 
 - **One Query, One Response**: No loops, no iteration, no multi-step orchestration
 - **Single Tool**: One tool (`search_github_developers`) that does all the work
-- **Augmented LLM**: Claude + tool access in a single invocation
+- **Augmented LLM**: Gemini + tool access in a single invocation
 - **Foundation**: Simple pattern that can evolve into more complex architectures
 
 ## Features
 
-- 🤖 AI-powered developer search using Claude Sonnet 4.5
+- 🤖 AI-powered developer search using **Gemini 3 Pro** on Vertex AI
 - 🔍 Natural language query processing
 - 🐙 GitHub API integration for comprehensive developer profiles
 - 📊 Rich candidate information (bio, repos, followers, location)
-- ⚡ Single-shot execution (< 30 seconds)
+- ⚡ Single-shot execution
 - 🎯 Keyword filtering in developer bios
 - 🔒 Secure API key management
 
 ## Prerequisites
 
 - **Go 1.21 or higher**
-- **Anthropic API key** - [Get one here](https://console.anthropic.com/)
+- **Google Cloud Project** with Vertex AI API enabled
 - **GitHub Personal Access Token** - [Get one here](https://github.com/settings/tokens)
   - Required scope: `read:user`
 
@@ -48,9 +48,10 @@ go mod download
 cp .env.example .env
 ```
 
-4. Edit `.env` and add your API keys:
+4. Edit `.env` and add your configuration:
 ```env
-ANTHROPIC_API_KEY=your_actual_anthropic_api_key_here
+VERTEX_PROJECT_ID=your_google_cloud_project_id
+VERTEX_REGION=us-central1
 GITHUB_TOKEN=your_actual_github_token_here
 ```
 
@@ -117,7 +118,7 @@ I found 8 Go developers in Lima with microservices experience:
 ### Architecture
 
 ```
-User Query → Claude (LLM) + Tool → GitHub API → Result
+User Query → Gemini (LLM) + Tool → GitHub API → Result
 ```
 
 ### Process Flow
@@ -125,10 +126,10 @@ User Query → Claude (LLM) + Tool → GitHub API → Result
 1. **User provides natural language query**
    - Example: "Find Go developers in Lima"
 
-2. **Claude parses the query**
+2. **Gemini parses the query**
    - Extracts: language="go", location="lima"
 
-3. **Claude calls the search_github_developers tool**
+3. **Gemini calls the search_github_developers tool**
    - Passes extracted parameters
 
 4. **Tool searches GitHub**
@@ -137,7 +138,7 @@ User Query → Claude (LLM) + Tool → GitHub API → Result
    - Enriches results with user details
    - Filters by keywords if specified
 
-5. **Claude formats and presents results**
+5. **Gemini formats and presents results**
    - Clear, readable candidate profiles
    - Ready to use
 
@@ -182,7 +183,7 @@ The system has ONE tool that does all the work:
 sourcing-agent/
 ├── main.go           # Main implementation
 │   ├── GitHub API integration
-│   ├── Anthropic Claude API integration
+│   ├── Vertex AI Gemini integration
 │   ├── Tool definition and execution
 │   └── Sourcing agent logic
 ├── main_test.go      # Unit tests
@@ -197,11 +198,10 @@ sourcing-agent/
 
 ## API Details
 
-### Anthropic Claude API
+### Google Cloud Vertex AI
 
-- **Model**: claude-sonnet-4-20250514
-- **Max Tokens**: 4096
-- **API Version**: 2023-06-01
+- **Model**: gemini-3-pro-preview
+- **SDK**: cloud.google.com/go/vertexai/genai
 - **Pattern**: Augmented LLM with tool use
 
 ### GitHub API
@@ -234,34 +234,21 @@ go test -bench=.
 go test -cover
 ```
 
-The test suite includes:
-- Unit tests for data structures
-- Tool definition validation
-- JSON marshaling/unmarshaling tests
-- Input validation tests
-- Benchmark tests
-
 ## Configuration
 
 ### Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Yes | Your Anthropic API key |
+| `VERTEX_PROJECT_ID` | Yes | Your Google Cloud Project ID |
+| `VERTEX_REGION` | Yes | Your Google Cloud Region (e.g., us-central1) |
 | `GITHUB_TOKEN` | Yes | Your GitHub Personal Access Token |
-
-### Default Settings
-
-- **Max Results**: 10 candidates
-- **Min Repos**: 5 public repositories
-- **Timeout**: 30 seconds for GitHub API, 60 seconds for Claude
-- **Tool Calls**: 1-2 per query (typically just 1)
 
 ## Error Handling
 
 The agent handles several error cases gracefully:
 
-- **Missing API Keys**: Clear error message with setup instructions
+- **Missing Environment Variables**: Clear error message with setup instructions
 - **Rate Limit Exceeded**: Returns error with retry suggestion
 - **Invalid Location**: Returns available results
 - **No Results Found**: Informs user and suggests broader criteria
@@ -289,37 +276,6 @@ This Stage 1 implementation is the foundation for more advanced patterns:
 - **Stage 4**: Integrated system with multiple sources (LinkedIn, internal ATS)
 - **Stage 5**: Autonomous agent with goal-driven behavior
 
-### Why Start with Stage 1?
-
-> "Always try simpler patterns first. Most problems don't need full autonomy."
->
-> — Anthropic's Building Effective Agents Guide
-
-Stage 1 proves the concept works before investing in complex architectures.
-
-## Building Effective Agents - Pattern Mapping
-
-This implementation follows Anthropic's recommended progression:
-
-1. **✓ Augmented LLM (Stage 1)** ← You are here
-   - LLM + tool access
-   - Single conversation turn
-   - Simplest possible implementation
-
-2. **Prompt Chaining (Stage 2)**
-   - Multiple sequential prompts
-   - Each step builds on previous
-
-3. **Routing (Stage 3)**
-   - Classify query → route to specialist
-
-4. **Orchestrator-Workers (Stage 4)**
-   - Coordinator + specialized agents
-
-5. **Full Autonomy (Stage 5)**
-   - Goal-driven behavior
-   - Self-correction and adaptation
-
 ## Security
 
 - API keys stored in `.env` files (excluded from git)
@@ -331,17 +287,17 @@ This implementation follows Anthropic's recommended progression:
 ## Performance
 
 - **Execution Time**: < 30 seconds typical
-- **API Calls**: 1 Claude call + N+1 GitHub calls (N = number of candidates)
+- **API Calls**: 1 Gemini call + N+1 GitHub calls (N = number of candidates)
 - **Rate Limits**: Well within GitHub's limits for single searches
 - **Memory**: Minimal (<50MB typical)
 
 ## Troubleshooting
 
-### "ANTHROPIC_API_KEY environment variable is not set"
+### "VERTEX_PROJECT_ID environment variable is not set"
 
-Create a `.env` file with your API key:
+Create a `.env` file with your Project ID:
 ```env
-ANTHROPIC_API_KEY=sk-ant-...
+VERTEX_PROJECT_ID=my-project-id
 ```
 
 ### "GITHUB_TOKEN environment variable is not set"
@@ -365,43 +321,6 @@ Try broader search criteria:
 - Use more general keywords
 - Lower `min_repos` requirement
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-### Development Guidelines
-
-1. Follow Go best practices
-2. Add tests for new features
-3. Update documentation
-4. Keep it simple (Stage 1 philosophy)
-
 ## License
 
 MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Resources
-
-- [Anthropic API Documentation](https://docs.anthropic.com/)
-- [GitHub API Documentation](https://docs.github.com/rest)
-- [Building Effective Agents (Anthropic)](https://docs.anthropic.com/en/docs/build-with-claude/develop-tests)
-- [Go Documentation](https://golang.org/doc/)
-
-## Support
-
-For issues or questions:
-- Open an issue on the GitHub repository
-- Check existing issues for solutions
-- Review the troubleshooting section
-
-## Acknowledgments
-
-This implementation follows the **Augmented LLM pattern** as described in Anthropic's "Building Effective Agents" guide, emphasizing simplicity and effectiveness over complexity.
-
----
-
-**Built with Claude Sonnet 4.5 and Go 1.21+**
-
-**Pattern**: Augmented LLM (Stage 1 of 5)
-
-**Version**: 1.0.0
