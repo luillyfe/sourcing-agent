@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/luillyfe/sourcing-agent/pkg/anthropic"
+	"github.com/luillyfe/sourcing-agent/pkg/llm"
 	"google.golang.org/genai"
 )
 
@@ -51,8 +51,8 @@ func (c *Client) Close() error {
 	return nil
 }
 
-// CallAPI calls the Gemini API and adapts the response to Anthropic format
-func (c *Client) CallAPI(messages []anthropic.Message, tools []anthropic.Tool) (*anthropic.Response, error) {
+// CallAPI calls the Gemini API and adapts the response to generic format
+func (c *Client) CallAPI(messages []llm.Message, tools []llm.Tool) (*llm.Response, error) {
 	// 1. Configure Tools
 	var toolConfig *genai.Tool
 	if len(tools) > 0 {
@@ -96,7 +96,7 @@ func (c *Client) CallAPI(messages []anthropic.Message, tools []anthropic.Tool) (
 		return nil, fmt.Errorf("failed to generate content: %w", err)
 	}
 
-	// 4. Convert Response to Anthropic format
+	// 4. Convert Response to generic format
 	return convertResponse(resp), nil
 }
 
@@ -106,7 +106,7 @@ func float32Ptr(v float32) *float32 {
 
 // --- Adapter Helpers ---
 
-func convertTool(tool anthropic.Tool) *genai.FunctionDeclaration {
+func convertTool(tool llm.Tool) *genai.FunctionDeclaration {
 	// Convert InputSchema to OpenAPI Schema
 	// Anthropic InputSchema is already very similar to JSON Schema
 	// We need to map it to genai.Schema
@@ -144,7 +144,7 @@ func convertMessageContent(content interface{}) []*genai.Part {
 	switch v := content.(type) {
 	case string:
 		parts = append(parts, &genai.Part{Text: v})
-	case []anthropic.ContentBlock:
+	case []llm.ContentBlock:
 		for _, block := range v {
 			switch block.Type {
 			case "text":
@@ -188,19 +188,19 @@ func convertMessageContent(content interface{}) []*genai.Part {
 	return parts
 }
 
-func convertResponse(resp *genai.GenerateContentResponse) *anthropic.Response {
-	anthropicResp := &anthropic.Response{
+func convertResponse(resp *genai.GenerateContentResponse) *llm.Response {
+	llmResp := &llm.Response{
 		Role: "assistant",
 		Type: "message",
 	}
 
-	var content []anthropic.ContentBlock
+	var content []llm.ContentBlock
 
 	for _, cand := range resp.Candidates {
 		if cand.Content != nil {
 			for _, part := range cand.Content.Parts {
 				if part.Text != "" {
-					content = append(content, anthropic.ContentBlock{
+					content = append(content, llm.ContentBlock{
 						Type: "text",
 						Text: part.Text,
 					})
@@ -215,23 +215,23 @@ func convertResponse(resp *genai.GenerateContentResponse) *anthropic.Response {
 						thoughtSig = string(part.ThoughtSignature)
 					}
 
-					content = append(content, anthropic.ContentBlock{
+					content = append(content, llm.ContentBlock{
 						Type:             "tool_use",
 						Name:             part.FunctionCall.Name,
 						ID:               toolID,
 						Input:            part.FunctionCall.Args,
 						ThoughtSignature: thoughtSig,
 					})
-					anthropicResp.StopReason = "tool_use"
+					llmResp.StopReason = "tool_use"
 				}
 			}
 		}
 	}
 
-	anthropicResp.Content = content
-	if anthropicResp.StopReason == "" {
-		anthropicResp.StopReason = "end_turn"
+	llmResp.Content = content
+	if llmResp.StopReason == "" {
+		llmResp.StopReason = "end_turn"
 	}
 
-	return anthropicResp
+	return llmResp
 }

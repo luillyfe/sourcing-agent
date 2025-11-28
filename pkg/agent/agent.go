@@ -5,17 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/luillyfe/sourcing-agent/pkg/anthropic"
 	"github.com/luillyfe/sourcing-agent/pkg/github"
+	"github.com/luillyfe/sourcing-agent/pkg/llm"
 )
 
-// LLMClient defines the interface for interacting with an LLM
-type LLMClient interface {
-	CallAPI(messages []anthropic.Message, tools []anthropic.Tool) (*anthropic.Response, error)
-}
-
 // Run executes the sourcing agent with a user query
-func Run(client LLMClient, githubClient *github.Client, query string) (string, error) {
+func Run(client llm.Client, githubClient *github.Client, query string) (string, error) {
 	// System prompt
 	systemPrompt := `You are a developer sourcing assistant. Your job is to search GitHub for developers matching hiring requirements.
 
@@ -29,7 +24,7 @@ Process:
 Keep it simple. One search, one response.`
 
 	// Initial messages
-	messages := []anthropic.Message{
+	messages := []llm.Message{
 		{
 			Role:    "user",
 			Content: fmt.Sprintf("%s\n\nUser query: %s", systemPrompt, query),
@@ -37,19 +32,19 @@ Keep it simple. One search, one response.`
 	}
 
 	// Tools
-	tools := []anthropic.Tool{getToolDefinition()}
+	tools := []llm.Tool{getToolDefinition()}
 
 	// Initial search
 	fmt.Println("Analyzing query and searching GitHub...")
 	resp, err := client.CallAPI(messages, tools)
 	if err != nil {
-		return "", fmt.Errorf("failed to call Anthropic API: %w", err)
+		return "", fmt.Errorf("failed to call LLM API: %w", err)
 	}
 
-	// Check if Claude wants to use a tool
+	// Check if LLM wants to use a tool
 	if resp.StopReason == "tool_use" {
 		// Find tool use blocks
-		var toolResults []anthropic.ContentBlock
+		var toolResults []llm.ContentBlock
 
 		for _, block := range resp.Content {
 			if block.Type == "tool_use" {
@@ -62,7 +57,7 @@ Keep it simple. One search, one response.`
 				}
 
 				// Add tool result
-				toolResults = append(toolResults, anthropic.ContentBlock{
+				toolResults = append(toolResults, llm.ContentBlock{
 					Type:      "tool_result",
 					ToolUseID: block.ID,
 					Content:   result,
@@ -71,22 +66,22 @@ Keep it simple. One search, one response.`
 		}
 
 		// Append assistant's tool use to messages
-		messages = append(messages, anthropic.Message{
+		messages = append(messages, llm.Message{
 			Role:    "assistant",
 			Content: resp.Content,
 		})
 
 		// Append tool results to messages
-		messages = append(messages, anthropic.Message{
+		messages = append(messages, llm.Message{
 			Role:    "user",
 			Content: toolResults,
 		})
 
-		// Call Anthropic again with tool results
+		// Call LLM again with tool results
 		fmt.Println("Processing search results...")
 		resp, err = client.CallAPI(messages, tools)
 		if err != nil {
-			return "", fmt.Errorf("failed to call Anthropic API with tool results: %w", err)
+			return "", fmt.Errorf("failed to call LLM API with tool results: %w", err)
 		}
 	}
 
@@ -134,13 +129,13 @@ func executeTool(githubClient *github.Client, toolName string, toolInput interfa
 }
 
 // getToolDefinition returns the tool definition for search_github_developers
-func getToolDefinition() anthropic.Tool {
-	return anthropic.Tool{
+func getToolDefinition() llm.Tool {
+	return llm.Tool{
 		Name:        "search_github_developers",
 		Description: "Search GitHub for developers matching specific criteria. Returns ready-to-present candidate profiles with their GitHub information.",
-		InputSchema: anthropic.InputSchema{
+		InputSchema: llm.InputSchema{
 			Type: "object",
-			Properties: map[string]anthropic.Property{
+			Properties: map[string]llm.Property{
 				"language": {
 					Type:        "string",
 					Description: "Programming language (required) - e.g., 'python', 'go', 'javascript'",
