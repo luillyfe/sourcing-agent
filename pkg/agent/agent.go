@@ -9,8 +9,13 @@ import (
 	"github.com/luillyfe/sourcing-agent/pkg/github"
 )
 
+// LLMClient defines the interface for interacting with an LLM
+type LLMClient interface {
+	CallAPI(messages []anthropic.Message, tools []anthropic.Tool) (*anthropic.Response, error)
+}
+
 // Run executes the sourcing agent with a user query
-func Run(anthropicClient *anthropic.Client, githubClient *github.Client, query string) (string, error) {
+func Run(client LLMClient, githubClient *github.Client, query string) (string, error) {
 	// System prompt
 	systemPrompt := `You are a developer sourcing assistant. Your job is to search GitHub for developers matching hiring requirements.
 
@@ -34,20 +39,23 @@ Keep it simple. One search, one response.`
 	// Tools
 	tools := []anthropic.Tool{getToolDefinition()}
 
-	// Call Claude API
-	response, err := anthropicClient.CallAPI(messages, tools)
+	// Initial search
+	fmt.Println("Analyzing query and searching GitHub...")
+	resp, err := client.CallAPI(messages, tools)
 	if err != nil {
 		return "", fmt.Errorf("failed to call Anthropic API: %w", err)
 	}
 
 	// Check if Claude wants to use a tool
-	if response.StopReason == "tool_use" {
+	if resp.StopReason == "tool_use" {
 		// Find tool use blocks
 		var toolResults []anthropic.ContentBlock
 
-		for _, block := range response.Content {
+		for _, block := range resp.Content {
 			if block.Type == "tool_use" {
-				// Execute the tool
+				fmt.Printf("Agent wants to use tool: %s\n", block.Name)
+
+				// Execute tool
 				result, err := executeTool(githubClient, block.Name, block.Input)
 				if err != nil {
 					return "", fmt.Errorf("failed to execute tool %s: %w", block.Name, err)
@@ -62,44 +70,35 @@ Keep it simple. One search, one response.`
 			}
 		}
 
-		// Add assistant response to messages
+		// Append assistant's tool use to messages
 		messages = append(messages, anthropic.Message{
 			Role:    "assistant",
-			Content: response.Content,
+			Content: resp.Content,
 		})
 
-		// Add tool results to messages
+		// Append tool results to messages
 		messages = append(messages, anthropic.Message{
 			Role:    "user",
 			Content: toolResults,
 		})
 
-		// Call Claude again with tool results
-		finalResponse, err := anthropicClient.CallAPI(messages, tools)
+		// Call Anthropic again with tool results
+		fmt.Println("Processing search results...")
+		resp, err = client.CallAPI(messages, tools)
 		if err != nil {
 			return "", fmt.Errorf("failed to call Anthropic API with tool results: %w", err)
 		}
-
-		// Extract final text response
-		var textParts []string
-		for _, block := range finalResponse.Content {
-			if block.Type == "text" {
-				textParts = append(textParts, block.Text)
-			}
-		}
-
-		return strings.Join(textParts, "\n"), nil
 	}
 
-	// If no tool use, just return the text response
-	var textParts []string
-	for _, block := range response.Content {
+	// Extract text content from final response
+	var finalContent strings.Builder
+	for _, block := range resp.Content {
 		if block.Type == "text" {
-			textParts = append(textParts, block.Text)
+			finalContent.WriteString(block.Text)
 		}
 	}
 
-	return strings.Join(textParts, "\n"), nil
+	return finalContent.String(), nil
 }
 
 // executeTool executes a tool call and returns the result

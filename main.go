@@ -1,14 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/luillyfe/sourcing-agent/pkg/agent"
-	"github.com/luillyfe/sourcing-agent/pkg/anthropic"
 	"github.com/luillyfe/sourcing-agent/pkg/github"
+	"github.com/luillyfe/sourcing-agent/pkg/vertexai"
 )
 
 func main() {
@@ -18,10 +19,17 @@ func main() {
 	}
 
 	// Get API keys from environment
-	anthropicKey := os.Getenv("ANTHROPIC_API_KEY")
-	if anthropicKey == "" {
-		fmt.Println("Error: ANTHROPIC_API_KEY environment variable is not set")
-		fmt.Println("Please create a .env file with your API key or set it as an environment variable")
+	projectID := os.Getenv("VERTEX_PROJECT_ID")
+	if projectID == "" {
+		fmt.Println("Error: VERTEX_PROJECT_ID environment variable is not set")
+		fmt.Println("Please create a .env file with your Project ID or set it as an environment variable")
+		os.Exit(1)
+	}
+
+	region := os.Getenv("VERTEX_REGION")
+	if region == "" {
+		fmt.Println("Error: VERTEX_REGION environment variable is not set")
+		fmt.Println("Please create a .env file with your Region or set it as an environment variable")
 		os.Exit(1)
 	}
 
@@ -57,10 +65,17 @@ func main() {
 
 	// Initialize clients
 	githubClient := github.NewClient(githubToken)
-	anthropicClient := anthropic.NewClient(anthropicKey)
+
+	ctx := context.Background()
+	vertexClient, err := vertexai.NewClient(ctx, projectID, region)
+	if err != nil {
+		fmt.Printf("Error initializing Vertex AI client: %v\n", err)
+		os.Exit(1)
+	}
+	defer vertexClient.Close()
 
 	// Run the sourcing agent
-	result, err := agent.Run(anthropicClient, githubClient, query)
+	result, err := agent.Run(vertexClient, githubClient, query)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)

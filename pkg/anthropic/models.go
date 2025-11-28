@@ -2,10 +2,11 @@ package anthropic
 
 // Request represents the request payload for Anthropic API
 type Request struct {
-	Model     string    `json:"model"`
-	MaxTokens int       `json:"max_tokens"`
-	Messages  []Message `json:"messages"`
-	Tools     []Tool    `json:"tools,omitempty"`
+	Model            string    `json:"model"`
+	MaxTokens        int       `json:"max_tokens"`
+	Messages         []Message `json:"messages"`
+	Tools            []Tool    `json:"tools,omitempty"`
+	AnthropicVersion string    `json:"anthropic_version,omitempty"`
 }
 
 // Message represents a message in the conversation
@@ -16,13 +17,14 @@ type Message struct {
 
 // ContentBlock represents a content block (text or tool_use or tool_result)
 type ContentBlock struct {
-	Type      string      `json:"type"`
-	Text      string      `json:"text,omitempty"`
-	ID        string      `json:"id,omitempty"`
-	Name      string      `json:"name,omitempty"`
-	Input     interface{} `json:"input,omitempty"`
-	ToolUseID string      `json:"tool_use_id,omitempty"`
-	Content   string      `json:"content,omitempty"`
+	Type             string      `json:"type"`
+	Text             string      `json:"text,omitempty"`
+	ID               string      `json:"id,omitempty"`
+	Name             string      `json:"name,omitempty"`
+	Input            interface{} `json:"input,omitempty"`
+	ToolUseID        string      `json:"tool_use_id,omitempty"`
+	Content          string      `json:"content,omitempty"`
+	ThoughtSignature string      `json:"thought_signature,omitempty"`
 }
 
 // Tool represents a tool definition for Claude
