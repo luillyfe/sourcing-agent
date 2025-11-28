@@ -8,6 +8,7 @@
 *.so
 *.dylib
 linkedin-headline
+sourcing-agent
 
 # Test binary, built with `go test -c`
 *.test
@@ -30,4 +31,4 @@ go.work.sum
 
 # Editor/IDE
 # .idea/
-# .vscode/
+.vscode/
