@@ -10,6 +10,19 @@ import (
 	"time"
 )
 
+// Repository represents a GitHub repository
+type Repository struct {
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Language    string   `json:"language"`
+	Stars       int      `json:"stargazers_count"`
+	Forks       int      `json:"forks_count"`
+	Topics      []string `json:"topics"`
+	URL         string   `json:"html_url"`
+	CreatedAt   string   `json:"created_at"`
+	UpdatedAt   string   `json:"updated_at"`
+}
+
 // Client handles interactions with the GitHub API
 type Client struct {
 	BaseURL string
@@ -166,4 +179,36 @@ func (c *Client) GetUserDetail(username string) (*UserDetail, error) {
 	}
 
 	return &userDetail, nil
+}
+
+// GetDeveloperRepositories retrieves repositories for a developer
+func (c *Client) GetDeveloperRepositories(username string, maxRepos int) ([]Repository, error) {
+	url := fmt.Sprintf("%s/users/%s/repos?sort=stars&per_page=%d", c.BaseURL, username, maxRepos)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", c.Token))
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("GitHub API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var repos []Repository
+	if err := json.NewDecoder(resp.Body).Decode(&repos); err != nil {
+		return nil, fmt.Errorf("failed to parse repositories: %w", err)
+	}
+
+	return repos, nil
 }

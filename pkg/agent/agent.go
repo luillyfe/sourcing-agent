@@ -163,3 +163,39 @@ func getToolDefinition() llm.Tool {
 		},
 	}
 }
+
+// RunStage2 executes the multi-prompt sourcing agent (Stage 2)
+func RunStage2(client llm.Client, githubClient *github.Client, query string) (string, error) {
+	fmt.Println("Stage 2: Analyzing requirements...")
+	// Step 1: Analyze Requirements
+	requirements, err := analyzeRequirements(client, query)
+	if err != nil {
+		return "", fmt.Errorf("requirements analysis failed: %w", err)
+	}
+	fmt.Printf("Requirements: %+v\n", requirements)
+
+	fmt.Println("Stage 2: Generating search strategy...")
+	// Step 2: Generate Search Strategy
+	strategy, err := generateSearchStrategy(client, requirements)
+	if err != nil {
+		return "", fmt.Errorf("strategy generation failed: %w", err)
+	}
+	fmt.Printf("Strategy: Primary=%s, Location=%s\n", strategy.PrimarySearch.Language, strategy.PrimarySearch.Location)
+
+	fmt.Println("Stage 2: Finding and enriching candidates...")
+	// Step 3: Find and Enrich Candidates
+	enrichedCandidates, err := findAndEnrichCandidates(client, githubClient, strategy, requirements)
+	if err != nil {
+		return "", fmt.Errorf("candidate search failed: %w", err)
+	}
+	fmt.Printf("Found %d candidates, analyzed %d\n", enrichedCandidates.SearchMetadata.TotalProfilesFound, enrichedCandidates.SearchMetadata.ProfilesAnalyzed)
+
+	fmt.Println("Stage 2: Ranking and presenting...")
+	// Step 4: Rank and Present
+	finalResult, err := rankAndPresent(client, enrichedCandidates, requirements)
+	if err != nil {
+		return "", fmt.Errorf("ranking failed: %w", err)
+	}
+
+	return finalResult, nil
+}
