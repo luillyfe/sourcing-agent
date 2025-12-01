@@ -89,80 +89,116 @@ Be specific and extract all relevant information from the query.
 ```
 
 ### PROMPT 2: SEARCH STRATEGY GENERATOR
-
-**Responsibility:** Generate optimal GitHub search strategies based on requirements
-
-**Input:** Output from Prompt 1 (Requirements structure)
-
-**System Prompt:**
-You are a search strategy expert for GitHub developer sourcing.
-
-Given structured requirements, generate optimal search strategies.
-
-Your task:
-1. Create primary search query (most specific)
-2. Create fallback queries (progressively broader)
-3. Identify repository keywords to look for
-4. Suggest filters (min repos, min stars, etc.)
-
-Consider:
-- GitHub search limitations (can't search by years of experience)
-- Use location and language as primary filters
-- Use keywords for secondary filtering
-- Plan for no results scenario
-
-**Output Format (JSON):**
-```json
-{
-  "primary_search": {
-    "language": "string",
-    "location": "string",
-    "min_repos": number,
-    "keywords": "string"
-  },
-  "fallback_searches": [
-    { "language": "string", "location": "string", ... }
-  ],
-  "repository_keywords": ["keyword1", "keyword2"],
-  "profile_filters": {
-    "min_followers": number,
-    "bio_keywords": ["keyword1", "keyword2"]
-  }
-}
-```
-
-**Output Example:**
-```json
-{
-  "primary_search": {
-    "language": "go",
-    "location": "lima",
-    "min_repos": 15,
-    "keywords": "microservices"
-  },
-  "fallback_searches": [
-    {
-      "language": "go",
-      "location": "peru",
-      "min_repos": 15,
-      "keywords": "microservices"
-    },
-    {
-      "language": "go",
-      "location": "lima",
-      "min_repos": 10,
-      "keywords": null
-    }
-  ],
-  "repository_keywords": [
-    "microservices", "mongodb", "api", "grpc", "docker"
-  ],
-  "profile_filters": {
-    "min_followers": 20,
-    "bio_keywords": ["senior", "lead", "architect", "backend"]
-  }
-}
-```
+ 
+ **Responsibility:** Generate optimal GitHub search strategies based on requirements
+ 
+ **Input:** Output from Prompt 1 (Requirements structure)
+ 
+ **System Prompt:**
+ You are a search strategy expert for GitHub developer sourcing.
+ 
+ ## Available Search Capabilities
+ 
+ The system can search GitHub using these parameters:
+ 
+ **User Search (primary)**
+ - language: programming language (inferred from user's repos)
+ - location: matches user's profile location field (freeform text, inconsistent)
+ - followers: minimum follower count (e.g., ">10", ">100")
+ 
+ **Repository Search (secondary)**
+ - keywords: searches repo names, descriptions, and READMEs
+ - stars: minimum star count
+ - language: exact match on repo primary language
+ 
+ **Post-Search Filtering (applied locally after fetching results)**
+ - min_repos: minimum public repository count
+ - bio_keywords: substring match against user bio
+ - recent_activity_days: only users with commits within N days
+ 
+ ## Limitations
+ 
+ - Cannot search by years of experience directly
+ - Location is unreliable (~40% of users have it filled, format varies)
+ - Language filter only works if user has public repos in that language
+ - GitHub API rate limits: prefer precise queries over broad ones
+ 
+ ## Your Task
+ 
+ Given structured job requirements, generate an optimal search strategy:
+ 
+ 1. Create a primary search (most specific, highest signal)
+ 2. Create fallback searches (progressively broader for when primary yields few results)
+ 3. Configure repository search to find users via their project work
+ 4. Set post-filters to refine results locally
+ 5. Plan for low/no results scenario in your fallbacks
+ 
+ ## Output Format (JSON)
+ 
+ ```json
+ {
+   "primary_search": {
+     "language": "string",
+     "location": "string", 
+     "followers": "string (e.g., '>10') or null"
+   },
+   "fallback_searches": [
+     {
+       "language": "string",
+       "location": "string or null (broader)",
+       "followers": "string or null",
+       "rationale": "string (why this fallback)"
+     }
+   ],
+   "repository_search": {
+     "keywords": ["keyword1", "keyword2"],
+     "min_stars": "number or null",
+     "language": "string"
+   },
+   "post_filters": {
+     "min_repos": "number",
+     "bio_keywords": ["keyword1", "keyword2"],
+     "recent_activity_days": "number or null"
+   },
+   "strategy_notes": "string (brief explanation of your approach)"
+ }
+ ```
+ 
+ **Output Example:**
+ ```json
+ {
+   "primary_search": {
+     "language": "go",
+     "location": "lima",
+     "followers": ">10"
+   },
+   "fallback_searches": [
+     {
+       "language": "go",
+       "location": "peru",
+       "followers": ">5",
+       "rationale": "Broadening location to country level"
+     },
+     {
+       "language": "go",
+       "location": "lima",
+       "followers": null,
+       "rationale": "Removing follower constraint"
+     }
+   ],
+   "repository_search": {
+     "keywords": ["microservices", "mongodb", "grpc"],
+     "min_stars": 5,
+     "language": "go"
+   },
+   "post_filters": {
+     "min_repos": 15,
+     "bio_keywords": ["senior", "lead", "backend"],
+     "recent_activity_days": 30
+   },
+   "strategy_notes": "Starting with strict location and follower count in Lima. Falling back to all of Peru, then removing follower constraints if needed. Using repo search to ensure microservices experience."
+ }
+ ```
 
 ### PROMPT 3: CANDIDATE FINDER & ENRICHER
 
@@ -587,22 +623,30 @@ type Requirements struct {
 
 // Search Strategy structure (output of Prompt 2)
 type SearchStrategy struct {
-    PrimarySearch       SearchQuery   `json:"primary_search"`
-    FallbackSearches    []SearchQuery `json:"fallback_searches"`
-    RepositoryKeywords  []string      `json:"repository_keywords"`
-    ProfileFilters      ProfileFilter `json:"profile_filters"`
+    PrimarySearch     SearchQuery      `json:"primary_search"`
+    FallbackSearches  []SearchQuery    `json:"fallback_searches"`
+    RepositorySearch  RepositorySearch `json:"repository_search"`
+    PostFilters       PostFilters      `json:"post_filters"`
+    StrategyNotes     string           `json:"strategy_notes"`
 }
 
 type SearchQuery struct {
     Language  string  `json:"language"`
     Location  string  `json:"location"`
-    MinRepos  int     `json:"min_repos"`
-    Keywords  *string `json:"keywords,omitempty"`
+    Followers *string `json:"followers,omitempty"`
+    Rationale string  `json:"rationale,omitempty"`
 }
 
-type ProfileFilter struct {
-    MinFollowers int      `json:"min_followers"`
-    BioKeywords  []string `json:"bio_keywords"`
+type RepositorySearch struct {
+    Keywords []string `json:"keywords"`
+    MinStars *int     `json:"min_stars,omitempty"`
+    Language string   `json:"language"`
+}
+
+type PostFilters struct {
+    MinRepos           int      `json:"min_repos"`
+    BioKeywords        []string `json:"bio_keywords"`
+    RecentActivityDays *int     `json:"recent_activity_days,omitempty"`
 }
 
 // Enriched Candidates structure (output of Prompt 3)

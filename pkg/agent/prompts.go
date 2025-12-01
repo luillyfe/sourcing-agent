@@ -267,11 +267,11 @@ func findAndEnrichCandidates(client llm.Client, githubClient *github.Client, str
 	input := github.ToolInput{
 		Language:   strategy.PrimarySearch.Language,
 		Location:   strategy.PrimarySearch.Location,
-		MinRepos:   strategy.PrimarySearch.MinRepos,
+		MinRepos:   strategy.PostFilters.MinRepos,
 		MaxResults: 15, // Aim for 15-20 as per spec
 	}
-	if strategy.PrimarySearch.Keywords != nil {
-		input.Keywords = *strategy.PrimarySearch.Keywords
+	if len(strategy.RepositorySearch.Keywords) > 0 {
+		input.Keywords = strings.Join(strategy.RepositorySearch.Keywords, " ")
 	}
 
 	result, err := githubClient.SearchDevelopers(input)
@@ -282,11 +282,11 @@ func findAndEnrichCandidates(client llm.Client, githubClient *github.Client, str
 			input = github.ToolInput{
 				Language:   fallback.Language,
 				Location:   fallback.Location,
-				MinRepos:   fallback.MinRepos,
+				MinRepos:   strategy.PostFilters.MinRepos,
 				MaxResults: 15,
 			}
-			if fallback.Keywords != nil {
-				input.Keywords = *fallback.Keywords
+			if len(strategy.RepositorySearch.Keywords) > 0 {
+				input.Keywords = strings.Join(strategy.RepositorySearch.Keywords, " ")
 			}
 			result, err = githubClient.SearchDevelopers(input)
 		}
@@ -319,7 +319,7 @@ func findAndEnrichCandidates(client llm.Client, githubClient *github.Client, str
 		// Analyze
 		relevantRepos := []RelevantRepository{}
 		for _, repo := range repos {
-			analysis := analyzeRepositoryRelevance(repo, requirements.RequiredSkills, strategy.RepositoryKeywords)
+			analysis := analyzeRepositoryRelevance(repo, requirements.RequiredSkills, strategy.RepositorySearch.Keywords)
 			if analysis.Score > 0.3 { // Threshold
 				relevantRepos = append(relevantRepos, RelevantRepository{
 					Name:            repo.Name,

@@ -184,7 +184,8 @@ func RunStage2(client llm.Client, githubClient *github.Client, query string) (st
 	if err != nil {
 		return "", fmt.Errorf("strategy generation failed: %w", err)
 	}
-	fmt.Printf("Strategy: Primary=%s, Location=%s\n", strategy.PrimarySearch.Language, strategy.PrimarySearch.Location)
+	strategyJSON, _ := json.MarshalIndent(strategy, "", "  ")
+	fmt.Printf("Strategy: %s\n", string(strategyJSON))
 
 	fmt.Println("Stage 2: Finding and enriching candidates...")
 	// Step 3: Find and Enrich Candidates

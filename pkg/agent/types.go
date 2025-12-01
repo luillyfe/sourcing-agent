@@ -11,22 +11,30 @@ type Requirements struct {
 
 // Search Strategy structure (output of Prompt 2)
 type SearchStrategy struct {
-	PrimarySearch      SearchQuery   `json:"primary_search"`
-	FallbackSearches   []SearchQuery `json:"fallback_searches"`
-	RepositoryKeywords []string      `json:"repository_keywords"`
-	ProfileFilters     ProfileFilter `json:"profile_filters"`
+	PrimarySearch    SearchQuery      `json:"primary_search"`
+	FallbackSearches []SearchQuery    `json:"fallback_searches"`
+	RepositorySearch RepositorySearch `json:"repository_search"`
+	PostFilters      PostFilters      `json:"post_filters"`
+	StrategyNotes    string           `json:"strategy_notes"`
 }
 
 type SearchQuery struct {
-	Language string  `json:"language"`
-	Location string  `json:"location"`
-	MinRepos int     `json:"min_repos"`
-	Keywords *string `json:"keywords,omitempty"`
+	Language  string  `json:"language"`
+	Location  string  `json:"location"`
+	Followers *string `json:"followers,omitempty"`
+	Rationale string  `json:"rationale,omitempty"`
 }
 
-type ProfileFilter struct {
-	MinFollowers int      `json:"min_followers"`
-	BioKeywords  []string `json:"bio_keywords"`
+type RepositorySearch struct {
+	Keywords []string `json:"keywords"`
+	MinStars *int     `json:"min_stars,omitempty"`
+	Language string   `json:"language"`
+}
+
+type PostFilters struct {
+	MinRepos           int      `json:"min_repos"`
+	BioKeywords        []string `json:"bio_keywords"`
+	RecentActivityDays *int     `json:"recent_activity_days,omitempty"`
 }
 
 // Enriched Candidates structure (output of Prompt 3)

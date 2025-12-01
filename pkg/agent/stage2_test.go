@@ -58,14 +58,20 @@ func TestGenerateSearchStrategy(t *testing.T) {
   "primary_search": {
     "language": "go",
     "location": "lima",
-    "min_repos": 10
+    "followers": ">10"
   },
   "fallback_searches": [],
-  "repository_keywords": ["microservices"],
-  "profile_filters": {
-    "min_followers": 5,
-    "bio_keywords": []
-  }
+  "repository_search": {
+    "keywords": ["microservices"],
+    "min_stars": 5,
+    "language": "go"
+  },
+  "post_filters": {
+    "min_repos": 10,
+    "bio_keywords": [],
+    "recent_activity_days": 30
+  },
+  "strategy_notes": "Test strategy"
 }
 ` + "```",
 			},
