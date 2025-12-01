@@ -26,8 +26,12 @@ Keep it simple. One search, one response.`
 	// Initial messages
 	messages := []llm.Message{
 		{
+			Role:    "system",
+			Content: systemPrompt,
+		},
+		{
 			Role:    "user",
-			Content: fmt.Sprintf("%s\n\nUser query: %s", systemPrompt, query),
+			Content: fmt.Sprintf("User query: %s", query),
 		},
 	}
 

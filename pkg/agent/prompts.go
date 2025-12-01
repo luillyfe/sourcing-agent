@@ -35,8 +35,12 @@ Be specific and extract all relevant information from the query.`
 
 	messages := []llm.Message{
 		{
+			Role:    "system",
+			Content: systemPrompt,
+		},
+		{
 			Role:    "user",
-			Content: fmt.Sprintf("%s\n\nUser query: %s", systemPrompt, userQuery),
+			Content: fmt.Sprintf("User query: %s", userQuery),
 		},
 	}
 
@@ -102,8 +106,12 @@ Output Format (JSON):
 	reqJSON, _ := json.Marshal(requirements)
 	messages := []llm.Message{
 		{
+			Role:    "system",
+			Content: systemPrompt,
+		},
+		{
 			Role:    "user",
-			Content: fmt.Sprintf("%s\n\nRequirements: %s", systemPrompt, string(reqJSON)),
+			Content: fmt.Sprintf("Requirements: %s", string(reqJSON)),
 		},
 	}
 
@@ -389,8 +397,12 @@ Output Format (JSON):
 
 	messages := []llm.Message{
 		{
+			Role:    "system",
+			Content: systemPrompt,
+		},
+		{
 			Role:    "user",
-			Content: fmt.Sprintf("%s\n\nInput Data: %s", systemPrompt, string(inputJSON)),
+			Content: fmt.Sprintf("Input Data: %s", string(inputJSON)),
 		},
 	}
 
