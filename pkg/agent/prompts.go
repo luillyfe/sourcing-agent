@@ -71,36 +71,69 @@ Be specific and extract all relevant information from the query.`
 func generateSearchStrategy(client llm.Client, requirements *Requirements) (*SearchStrategy, error) {
 	systemPrompt := `You are a search strategy expert for GitHub developer sourcing.
 
-Given structured requirements, generate optimal search strategies.
+## Available Search Capabilities
 
-Your task:
-1. Create primary search query (most specific)
-2. Create fallback queries (progressively broader)
-3. Identify repository keywords to look for
-4. Suggest filters (min repos, min stars, etc.)
+The system can search GitHub using these parameters:
 
-Consider:
-- GitHub search limitations (can't search by years of experience)
-- Use location and language as primary filters
-- Use keywords for secondary filtering
-- Plan for no results scenario
+**User Search (primary)**
+- language: programming language (inferred from user's repos)
+- location: matches user's profile location field (freeform text, inconsistent)
+- followers: minimum follower count (e.g., ">10", ">100")
 
-Output Format (JSON):
+**Repository Search (secondary)**
+- keywords: searches repo names, descriptions, and READMEs
+- stars: minimum star count
+- language: exact match on repo primary language
+
+**Post-Search Filtering (applied locally after fetching results)**
+- min_repos: minimum public repository count
+- bio_keywords: substring match against user bio
+- recent_activity_days: only users with commits within N days
+
+## Limitations
+
+- Cannot search by years of experience directly
+- Location is unreliable (~40% of users have it filled, format varies)
+- Language filter only works if user has public repos in that language
+- GitHub API rate limits: prefer precise queries over broad ones
+
+## Your Task
+
+Given structured job requirements, generate an optimal search strategy:
+
+1. Create a primary search (most specific, highest signal)
+2. Create fallback searches (progressively broader for when primary yields few results)
+3. Configure repository search to find users via their project work
+4. Set post-filters to refine results locally
+5. Plan for low/no results scenario in your fallbacks
+
+## Output Format (JSON)
+
 {
   "primary_search": {
     "language": "string",
-    "location": "string",
-    "min_repos": number,
-    "keywords": "string"
+    "location": "string", 
+    "followers": "string (e.g., '>10') or null"
   },
   "fallback_searches": [
-    { "language": "string", "location": "string", ... }
+    {
+      "language": "string",
+      "location": "string or null (broader)",
+      "followers": "string or null",
+      "rationale": "string (why this fallback)"
+    }
   ],
-  "repository_keywords": ["keyword1", "keyword2"],
-  "profile_filters": {
-    "min_followers": number,
-    "bio_keywords": ["keyword1", "keyword2"]
-  }
+  "repository_search": {
+    "keywords": ["keyword1", "keyword2"],
+    "min_stars": "number or null",
+    "language": "string"
+  },
+  "post_filters": {
+    "min_repos": "number",
+    "bio_keywords": ["keyword1", "keyword2"],
+    "recent_activity_days": "number or null"
+  },
+  "strategy_notes": "string (brief explanation of your approach)"
 }`
 
 	reqJSON, _ := json.Marshal(requirements)
