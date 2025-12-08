@@ -488,109 +488,87 @@ func runSourcingAgentStage2(userQuery string) (string, error) {
 
 ```go
 // Prompt 1: Requirements Analyzer
-func analyzeRequirements(userQuery string) (*Requirements, error) {
-    client := anthropic.NewClient(os.Getenv("ANTHROPIC_API_KEY"))
-    
+func analyzeRequirements(client llm.Client, userQuery string) (*Requirements, error) {
     systemPrompt := `You are a requirements analyzer for technical 
                      recruiting...`
     
-    response, err := client.Messages.Create(
-        context.Background(),
-        &anthropic.MessageCreateParams{
-            Model: "claude-sonnet-4-20250514",
-            MaxTokens: 1024,
-            System: systemPrompt,
-            Messages: []anthropic.MessageParam{
-                {
-                    Role: "user",
-                    Content: userQuery,
-                },
-            },
-        },
-    )
+    messages := []llm.Message{
+        {Role: "system", Content: systemPrompt},
+        {Role: "user", Content: fmt.Sprintf("User query: %s", userQuery)},
+    }
+    
+    resp, err := client.CallAPI(messages, nil)
+    if err != nil {
+        return nil, err
+    }
+    
+    var content string
+    for _, block := range resp.Content {
+        if block.Type == "text" {
+            content += block.Text
+        }
+    }
     
     // Parse JSON response into Requirements struct
     var requirements Requirements
-    err = json.Unmarshal([]byte(response.Content[0].Text), &requirements)
+    err = json.Unmarshal([]byte(extractJSON(content)), &requirements)
     
     return &requirements, err
 }
 
 // Prompt 2: Search Strategy Generator
 func generateSearchStrategy(
+    client llm.Client,
     requirements *Requirements,
 ) (*SearchStrategy, error) {
-    client := anthropic.NewClient(os.Getenv("ANTHROPIC_API_KEY"))
-    
     systemPrompt := `You are a search strategy expert for GitHub developer 
                      sourcing...`
     
     requirementsJSON, _ := json.Marshal(requirements)
     
-    response, err := client.Messages.Create(
-        context.Background(),
-        &anthropic.MessageCreateParams{
-            Model: "claude-sonnet-4-20250514",
-            MaxTokens: 1024,
-            System: systemPrompt,
-            Messages: []anthropic.MessageParam{
-                {
-                    Role: "user",
-                    Content: string(requirementsJSON),
-                },
-            },
-        },
-    )
+    messages := []llm.Message{
+        {Role: "system", Content: systemPrompt},
+        {Role: "user", Content: string(requirementsJSON)},
+    }
+    
+    resp, err := client.CallAPI(messages, nil)
+    if err != nil {
+        return nil, err
+    }
+    
+    var content string
+    for _, block := range resp.Content {
+        if block.Type == "text" {
+            content += block.Text
+        }
+    }
     
     // Parse JSON response
     var strategy SearchStrategy
-    err = json.Unmarshal([]byte(response.Content[0].Text), &strategy)
+    err = json.Unmarshal([]byte(extractJSON(content)), &strategy)
     
     return &strategy, err
 }
 
 // Prompt 3: Candidate Finder & Enricher
 func findAndEnrichCandidates(
+    client llm.Client,
     strategy *SearchStrategy,
 ) (*EnrichedCandidates, error) {
-    client := anthropic.NewClient(os.Getenv("ANTHROPIC_API_KEY"))
+    // This function orchestrates the search and enrichment
+    // It may use programmatic tools or LLM calls depending on implementation
     
-    systemPrompt := `You are a candidate sourcing specialist...`
-    
-    // This prompt has tool access
-    tools := []anthropic.ToolDefinition{
-        {
-            Name: "search_github_developers",
-            Description: "Search GitHub for developers...",
-            InputSchema: ...,
-        },
-        {
-            Name: "get_developer_repositories",
-            Description: "Get repositories for a developer...",
-            InputSchema: ...,
-        },
-    }
-    
-    strategyJSON, _ := json.Marshal(strategy)
-    
-    // Execute with tool support (similar to Stage 1)
-    enrichedCandidates := executePromptWithTools(
-        client,
-        systemPrompt,
-        strategyJSON,
-        tools,
-    )
+    // ... Implementation logic ...
     
     return enrichedCandidates, nil
 }
 
 // Prompt 4: Ranker & Presenter
 func rankAndPresent(
+    client llm.Client,
     candidates *EnrichedCandidates,
     requirements *Requirements,
 ) (string, error) {
-    client := anthropic.NewClient(os.Getenv("ANTHROPIC_API_KEY"))
-    
     systemPrompt := `You are a candidate ranking and presentation 
                      specialist...`
     
@@ -600,22 +578,24 @@ func rankAndPresent(
     }
     inputJSON, _ := json.Marshal(input)
     
-    response, err := client.Messages.Create(
-        context.Background(),
-        &anthropic.MessageCreateParams{
-            Model: "claude-sonnet-4-20250514",
-            MaxTokens: 4096,
-            System: systemPrompt,
-            Messages: []anthropic.MessageParam{
-                {
-                    Role: "user",
-                    Content: string(inputJSON),
-                },
-            },
-        },
-    )
+    messages := []llm.Message{
+        {Role: "system", Content: systemPrompt},
+        {Role: "user", Content: string(inputJSON)},
+    }
     
-    return response.Content[0].Text, err
+    resp, err := client.CallAPI(messages, nil)
+    if err != nil {
+        return "", err
+    }
+    
+    var content string
+    for _, block := range resp.Content {
+        if block.Type == "text" {
+            content += block.Text
+        }
+    }
+    
+    return extractJSON(content), nil
 }
 ```
 
@@ -800,7 +780,7 @@ type Repository struct {
 }
 ```
 
-**Tool Definition for Claude:**
+**Tool Definition:**
 ```json
 {
     "name": "get_developer_repositories",
@@ -1310,7 +1290,7 @@ Between each prompt:
 **Required:**
 - Go 1.21 or higher
 - GitHub Personal Access Token
-- Anthropic API Key
+- Vertex AI Project ID
 
 **Configuration:**
 - Set appropriate timeouts for each prompt
@@ -1321,12 +1301,12 @@ Between each prompt:
 **Track:**
 - Execution time per prompt
 - Total pipeline duration
-- API call counts (GitHub + Claude)
+- API call counts (GitHub + LLM)
 - Success/failure rates
 - Quality metrics (match scores)
 
 ### 16.3 Cost Management
-**Claude API Costs:**
+**LLM API Costs:**
 - Prompt 1: ~500 tokens
 - Prompt 2: ~800 tokens
 - Prompt 3: ~2000 tokens (with tool calls)
@@ -1407,37 +1387,37 @@ Between each prompt:
 ### Typical API Call Sequence:
 
 1. **Prompt 1 (Requirements Analyzer)**
-   - 1 Claude API call
+   - 1 LLM API call
    - Input: ~100 tokens
    - Output: ~300 tokens
 
 2. **Prompt 2 (Search Strategy Generator)**
-   - 1 Claude API call
+   - 1 LLM API call
    - Input: ~300 tokens
    - Output: ~500 tokens
 
 3. **Prompt 3 (Candidate Finder & Enricher)**
-   - 1 Claude API call (with tools)
-   - Claude calls `search_github_developers`: 1-2 times
-   - Claude calls `get_developer_repositories`: 10-15 times
+   - 1 LLM API call (with tools)
+   - LLM calls `search_github_developers`: 1-2 times
+   - LLM calls `get_developer_repositories`: 10-15 times
    - Total GitHub API calls: 12-17
    - Input: ~500 tokens
    - Output: ~1500 tokens
 
 4. **Prompt 4 (Ranker & Presenter)**
-   - 1 Claude API call
+   - 1 LLM API call
    - Input: ~1500 tokens
    - Output: ~1000 tokens
 
 **Total:**
-- Claude API calls: 4
+- LLM API calls: 4
 - GitHub API calls: 12-17
 - Total tokens: ~4300
 - Execution time: 60-120 seconds
 
-## 20. ANTHROPIC'S BUILDING BLOCKS MAPPING
+## 20. LLM BUILDING BLOCKS MAPPING
 
-This Stage 2 implements Anthropic's "Prompt Chaining" pattern:
+This Stage 2 implements the "Prompt Chaining" pattern:
 
 ### Characteristics:
 ✓ Multiple prompts in sequence
