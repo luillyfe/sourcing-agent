@@ -364,17 +364,27 @@ Your task:
   "primary_search": {
     "language": "go",
     "location": "lima",
-    "min_repos": 15,
-    "keywords": "microservices"
+    "followers": ">20"
   },
   "fallback_searches": [
-    { "language": "go", "location": "peru", "min_repos": 15 }
+    {
+      "language": "go",
+      "location": "peru",
+      "followers": ">10",
+      "rationale": "Broadening location to country level"
+    }
   ],
-  "repository_keywords": ["microservices", "mongodb", "grpc"],
-  "profile_filters": {
-    "min_followers": 20,
-    "bio_keywords": ["senior", "lead", "backend"]
-  }
+  "repository_search": {
+    "keywords": ["microservices", "mongodb", "grpc"],
+    "min_stars": 5,
+    "language": "go"
+  },
+  "post_filters": {
+    "min_repos": 15,
+    "bio_keywords": ["senior", "lead", "backend"],
+    "recent_activity_days": 30
+  },
+  "strategy_notes": "Starting with strict location and follower count in Lima. Falling back to all of Peru. Using repo search to ensure microservices experience."
 }
 ```
 
