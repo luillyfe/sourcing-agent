@@ -914,20 +914,33 @@ type RelevanceAnalysis struct {
   "primary_search": {
     "language": "go",
     "location": "lima",
-    "min_repos": 15,
-    "keywords": "microservices"
+    "followers": ">20"
   },
   "fallback_searches": [
-    { "language": "go", "location": "peru", "min_repos": 15 },
-    { "language": "go", "location": "lima", "min_repos": 10 }
+    {
+      "language": "go",
+      "location": "peru",
+      "followers": ">10",
+      "rationale": "Broader location match"
+    },
+    {
+      "language": "go",
+      "location": "lima",
+      "followers": ">10",
+      "rationale": "Lower follower count"
+    }
   ],
-  "repository_keywords": [
-    "microservices", "mongodb", "grpc", "api", "docker"
-  ],
-  "profile_filters": {
-    "min_followers": 20,
-    "bio_keywords": ["senior", "lead", "backend"]
-  }
+  "repository_search": {
+    "keywords": ["microservices", "mongodb", "grpc", "api", "docker"],
+    "min_stars": 5,
+    "language": "go"
+  },
+  "post_filters": {
+    "min_repos": 15,
+    "bio_keywords": ["senior", "lead", "backend"],
+    "recent_activity_days": 30
+  },
+  "strategy_notes": "Prioritizing Lima-based candidates with significant following."
 }
 ```
 

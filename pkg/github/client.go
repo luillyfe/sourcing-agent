@@ -62,6 +62,7 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 	// Call GitHub Search API
 	// Note: We use the BaseURL from the client
 	url := fmt.Sprintf("%s/search/users?q=%s&per_page=%d", c.BaseURL, query, input.MaxResults)
+	fmt.Println("SearchDevelopers: ", url)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -92,6 +93,7 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 		return nil, fmt.Errorf("failed to parse search response: %w", err)
 	}
 
+	fmt.Println("SearchResponse: ", searchResponse)
 	// Enrich each user with detailed information
 	candidates := []Candidate{}
 	for i, user := range searchResponse.Items {
@@ -148,6 +150,7 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 func (c *Client) GetUserDetail(username string) (*UserDetail, error) {
 	// Note: We use the BaseURL from the client
 	url := fmt.Sprintf("%s/users/%s", c.BaseURL, username)
+	fmt.Println("GetUserDetail: ", url)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
