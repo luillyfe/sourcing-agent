@@ -61,7 +61,8 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 
 	// Call GitHub Search API
 	// Note: We use the BaseURL from the client
-	url := fmt.Sprintf("%s/search/users?q=%s&per_page=%d", c.BaseURL, query, input.MaxResults)
+	// Request up to 100 results per page to allow for filtering attrition
+	url := fmt.Sprintf("%s/search/users?q=%s&per_page=100", c.BaseURL, query)
 	fmt.Println("SearchDevelopers: ", url)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -96,8 +97,9 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 	fmt.Println("SearchResponse: ", searchResponse)
 	// Enrich each user with detailed information
 	candidates := []Candidate{}
-	for i, user := range searchResponse.Items {
-		if i >= input.MaxResults {
+	for _, user := range searchResponse.Items {
+		// Stop if we have collected enough candidates
+		if len(candidates) >= input.MaxResults {
 			break
 		}
 
