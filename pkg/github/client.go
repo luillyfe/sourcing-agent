@@ -110,15 +110,6 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 			continue
 		}
 
-		// Filter by keywords if specified
-		if input.Keywords != "" {
-			keywords := strings.ToLower(input.Keywords)
-			bio := strings.ToLower(detail.Bio)
-			if !strings.Contains(bio, keywords) {
-				continue
-			}
-		}
-
 		candidate := Candidate{
 			Username:    detail.Login,
 			Name:        detail.Name,
