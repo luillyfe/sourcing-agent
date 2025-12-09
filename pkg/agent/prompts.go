@@ -275,9 +275,13 @@ func findAndEnrichCandidates(client llm.Client, githubClient *github.Client, str
 	}
 
 	result, err := githubClient.SearchDevelopers(input)
-	if err != nil {
+	if err != nil || (result != nil && len(result.Candidates) == 0) {
 		// Try fallback
 		if len(strategy.FallbackSearches) > 0 {
+			if err == nil {
+				fmt.Println("Primary search returned no results, switching to fallback strategy...")
+			}
+
 			fallback := strategy.FallbackSearches[0]
 			input = github.ToolInput{
 				Language:   fallback.Language,
