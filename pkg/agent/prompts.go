@@ -263,6 +263,7 @@ func findAndEnrichCandidates(client llm.Client, githubClient *github.Client, str
 	// I will stick to the programmatic implementation for efficiency, as hinted by the "Recommended: Start with programmatic approach" in the spec.
 
 	// 1. Search
+	searchesExecuted := 1
 	var candidates []github.Candidate
 	input := github.ToolInput{
 		Language:   strategy.PrimarySearch.Language,
@@ -279,6 +280,7 @@ func findAndEnrichCandidates(client llm.Client, githubClient *github.Client, str
 		// Try fallback
 		// Try fallback strategies
 		for i, fallback := range strategy.FallbackSearches {
+			searchesExecuted++
 			if err == nil {
 				fmt.Printf("Search returned no results, switching to fallback strategy %d...\n", i+1)
 			}
@@ -305,7 +307,7 @@ func findAndEnrichCandidates(client llm.Client, githubClient *github.Client, str
 	}
 	if result == nil {
 		return &EnrichedCandidates{
-			SearchMetadata: SearchMetadata{SearchesExecuted: 1},
+			SearchMetadata: SearchMetadata{SearchesExecuted: searchesExecuted},
 		}, nil
 	}
 	candidates = result.Candidates
@@ -368,7 +370,7 @@ func findAndEnrichCandidates(client llm.Client, githubClient *github.Client, str
 	return &EnrichedCandidates{
 		Candidates: enriched,
 		SearchMetadata: SearchMetadata{
-			SearchesExecuted:   1,
+			SearchesExecuted:   searchesExecuted,
 			TotalProfilesFound: len(candidates),
 			ProfilesAnalyzed:   profilesAnalyzed,
 		},
