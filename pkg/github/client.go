@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -59,13 +60,15 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 
 	query := strings.Join(queryParts, "+")
 
-	// Call GitHub Search API
-	// Note: We use the BaseURL from the client
-	// Request up to 100 results per page to allow for filtering attrition
-	url := fmt.Sprintf("%s/search/users?q=%s&per_page=100", c.BaseURL, query)
-	fmt.Println("SearchDevelopers: ", url)
+	// Encode the query to handle special characters (e.g., accents)
+	encodedQuery := url.QueryEscape(query)
 
-	req, err := http.NewRequest("GET", url, nil)
+	// Call GitHub Search API
+	// Request up to 100 results per page to allow for filtering attrition
+	apiURL := fmt.Sprintf("%s/search/users?q=%s&per_page=100", c.BaseURL, encodedQuery)
+	fmt.Println("SearchDevelopers: ", apiURL)
+
+	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
