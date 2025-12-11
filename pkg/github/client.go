@@ -58,7 +58,7 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 		queryParts = append(queryParts, fmt.Sprintf("location:%s", input.Location))
 	}
 
-	query := strings.Join(queryParts, "+")
+	query := strings.Join(queryParts, " ")
 
 	// Encode the query to handle special characters (e.g., accents)
 	encodedQuery := url.QueryEscape(query)
