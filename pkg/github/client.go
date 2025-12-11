@@ -96,8 +96,8 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 	if err := json.Unmarshal(body, &searchResponse); err != nil {
 		return nil, fmt.Errorf("failed to parse search response: %w", err)
 	}
-
 	fmt.Println("SearchResponse: ", searchResponse)
+
 	// Enrich each user with detailed information
 	candidates := []Candidate{}
 	for _, user := range searchResponse.Items {
@@ -144,7 +144,6 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 
 // GetUserDetail retrieves detailed information for a GitHub user
 func (c *Client) GetUserDetail(username string) (*UserDetail, error) {
-	// Note: We use the BaseURL from the client
 	url := fmt.Sprintf("%s/users/%s", c.BaseURL, username)
 	fmt.Println("GetUserDetail: ", url)
 
@@ -183,6 +182,7 @@ func (c *Client) GetUserDetail(username string) (*UserDetail, error) {
 // GetDeveloperRepositories retrieves repositories for a developer
 func (c *Client) GetDeveloperRepositories(username string, maxRepos int) ([]Repository, error) {
 	url := fmt.Sprintf("%s/users/%s/repos?sort=stars&per_page=%d", c.BaseURL, username, maxRepos)
+	fmt.Println("GetDeveloperRepositories: ", url)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
