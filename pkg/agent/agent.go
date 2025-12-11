@@ -169,12 +169,12 @@ func getToolDefinition() llm.Tool {
 }
 
 // RunStage2 executes the multi-prompt sourcing agent (Stage 2)
-func RunStage2(client llm.Client, githubClient *github.Client, query string) (string, error) {
+func RunStage2(client llm.Client, githubClient *github.Client, query string) (*FinalResult, error) {
 	fmt.Println("Step 1: Analyzing requirements...")
 	// Step 1: Analyze Requirements
 	requirements, err := analyzeRequirements(client, query)
 	if err != nil {
-		return "", fmt.Errorf("requirements analysis failed: %w", err)
+		return nil, fmt.Errorf("requirements analysis failed: %w", err)
 	}
 	fmt.Printf("Requirements: %+v\n", requirements)
 
@@ -182,7 +182,7 @@ func RunStage2(client llm.Client, githubClient *github.Client, query string) (st
 	// Step 2: Generate Search Strategy
 	strategy, err := generateSearchStrategy(client, requirements)
 	if err != nil {
-		return "", fmt.Errorf("strategy generation failed: %w", err)
+		return nil, fmt.Errorf("strategy generation failed: %w", err)
 	}
 	strategyJSON, _ := json.MarshalIndent(strategy, "", "  ")
 	fmt.Printf("Strategy: %s\n", string(strategyJSON))
@@ -191,7 +191,7 @@ func RunStage2(client llm.Client, githubClient *github.Client, query string) (st
 	// Step 3: Find and Enrich Candidates
 	enrichedCandidates, err := findAndEnrichCandidates(client, githubClient, strategy, requirements)
 	if err != nil {
-		return "", fmt.Errorf("candidate search failed: %w", err)
+		return nil, fmt.Errorf("candidate search failed: %w", err)
 	}
 	fmt.Printf("Found %d candidates, analyzed %d\n", enrichedCandidates.SearchMetadata.TotalProfilesFound, enrichedCandidates.SearchMetadata.ProfilesAnalyzed)
 
@@ -199,7 +199,7 @@ func RunStage2(client llm.Client, githubClient *github.Client, query string) (st
 	// Step 4: Rank and Present
 	finalResult, err := rankAndPresent(client, enrichedCandidates, requirements)
 	if err != nil {
-		return "", fmt.Errorf("ranking failed: %w", err)
+		return nil, fmt.Errorf("ranking failed: %w", err)
 	}
 
 	return finalResult, nil

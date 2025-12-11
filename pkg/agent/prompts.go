@@ -378,7 +378,7 @@ func findAndEnrichCandidates(client llm.Client, githubClient *github.Client, str
 }
 
 // rankAndPresent (Prompt 4)
-func rankAndPresent(client llm.Client, candidates *EnrichedCandidates, requirements *Requirements) (string, error) {
+func rankAndPresent(client llm.Client, candidates *EnrichedCandidates, requirements *Requirements) (*FinalResult, error) {
 	systemPrompt := `You are a candidate ranking and presentation specialist.
 
 Given enriched candidate data, produce final rankings and presentation.
@@ -451,7 +451,7 @@ Output Format (JSON):
 
 	resp, err := client.CallAPI(messages, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to call LLM: %w", err)
+		return nil, fmt.Errorf("failed to call LLM: %w", err)
 	}
 
 	var content string
@@ -461,19 +461,14 @@ Output Format (JSON):
 		}
 	}
 
-	// The spec says "Final Response" is the output.
-	// But `rankAndPresent` returns JSON in the spec example.
-	// And then we probably want to format it nicely for the user?
-	// Or just return the JSON?
-	// The `runSourcingAgentStage2` returns `string`.
-	// Let's return the JSON string for now, or maybe format it?
-	// The spec says "Format top 10 for presentation" but the output format is JSON.
-	// So the JSON *is* the presentation data, and the UI (or CLI) renders it.
-	// Since this is a CLI tool (mostly), maybe we should convert JSON to text?
-	//
-	// For now, I'll return the raw JSON string from the LLM.
+	jsonStr := extractJSON(content)
 
-	return extractJSON(content), nil
+	var result FinalResult
+	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse final result JSON: %w", err)
+	}
+
+	return &result, nil
 }
 
 // Helper to extract JSON from markdown code blocks
