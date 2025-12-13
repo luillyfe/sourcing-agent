@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/luillyfe/sourcing-agent/pkg/agent"
@@ -75,12 +77,16 @@ func main() {
 	defer vertexClient.Close()
 
 	// Run the sourcing agent
-	result, err := agent.Run(vertexClient, githubClient, query)
+	startTime := time.Now()
+	result, err := agent.RunStage2(vertexClient, githubClient, query)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
+	duration := time.Since(startTime)
 
 	// Display result
-	fmt.Println(result)
+	resultJSON, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Println(string(resultJSON))
+	fmt.Printf("\nTotal execution time: %.2f seconds\n", duration.Seconds())
 }
