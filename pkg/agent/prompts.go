@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/luillyfe/sourcing-agent/pkg/github"
@@ -384,32 +385,29 @@ func rankAndPresent(client llm.Client, candidates *EnrichedCandidates, requireme
 Given enriched candidate data, produce final rankings and presentation.
 
 Your task:
-1. Calculate final match scores based on:
+1. Evaluate each candidate's fit based on:
    - Required skills coverage
    - Repository relevance
    - Experience indicators
    - Location match
    - Profile quality (bio, followers, activity)
-2. Rank candidates by match score
-3. Format top 10 for presentation
-4. Provide reasoning for each candidate
+2. Format the top candidates for presentation
+3. Provide reasoning for each candidate
 
-Scoring weights:
-- Required skills match: 40%
-- Repository relevance: 30%
-- Experience indicators: 20%
-- Profile quality: 10%
+Evaluate each candidate on a 0-100 scale for these components:
+- Required skills match
+- Repository relevance
+- Experience indicators
+- Profile quality
 
 Output Format (JSON):
 {
   "top_candidates": [
     {
-      "rank": number,
       "username": "string",
       "name": "string",
       "location": "string",
       "github_url": "string",
-      "final_match_score": number,
       "match_breakdown": {
         "required_skills_score": number,
         "repository_relevance_score": number,
@@ -466,6 +464,37 @@ Output Format (JSON):
 	var result FinalResult
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse final result JSON: %w", err)
+	}
+
+	// Calculate scores programmatically to ensure accuracy
+	// Weights: Skills (40%), Repos (30%), Experience (20%), Quality (10%)
+	var totalScore float64
+	for i := range result.TopCandidates {
+		cand := &result.TopCandidates[i]
+		bd := cand.MatchBreakdown
+
+		finalScore := (bd.RequiredSkillsScore * 0.4) +
+			(bd.RepositoryRelevanceScore * 0.3) +
+			(bd.ExperienceScore * 0.2) +
+			(bd.ProfileQualityScore * 0.1)
+
+		cand.FinalMatchScore = finalScore
+		totalScore += finalScore
+	}
+
+	// Sort candidates by score desc
+	sort.Slice(result.TopCandidates, func(i, j int) bool {
+		return result.TopCandidates[i].FinalMatchScore > result.TopCandidates[j].FinalMatchScore
+	})
+
+	// Assign ranks
+	for i := range result.TopCandidates {
+		result.TopCandidates[i].Rank = i + 1
+	}
+
+	// Update summary stats
+	if len(result.TopCandidates) > 0 {
+		result.Summary.AverageMatchScore = totalScore / float64(len(result.TopCandidates))
 	}
 
 	return &result, nil
