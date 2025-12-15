@@ -503,6 +503,66 @@ Output Format (JSON):
 	return &result, nil
 }
 
+// createFallbackResult creates a FinalResult from enriched candidates without LLM ranking
+func createFallbackResult(candidates *EnrichedCandidates) *FinalResult {
+	topCandidates := []RankedCandidate{}
+	var totalScore float64
+
+	// Convert enriched candidates to ranked candidates
+	for i, cand := range candidates.Candidates {
+		// Just take top 10 if there are many
+		if i >= 10 {
+			break
+		}
+
+		relevantProjects := []RelevantProject{}
+		for _, repo := range cand.RelevantRepositories {
+			relevantProjects = append(relevantProjects, RelevantProject{
+				Name:        repo.Name,
+				URL:         cand.GitHubURL + "/" + repo.Name,
+				WhyRelevant: repo.RelevanceReason,
+			})
+		}
+
+		ranked := RankedCandidate{
+			Username:            cand.Username,
+			Name:                cand.Name,
+			Location:            cand.Location,
+			GitHubURL:           cand.GitHubURL,
+			FinalMatchScore:     cand.InitialMatchScore * 100, // Scale to 0-100
+			MatchReasoning:      "Ranking step unavailable; score is based on initial keyword match.",
+			TopRelevantProjects: relevantProjects,
+		}
+		topCandidates = append(topCandidates, ranked)
+		totalScore += ranked.FinalMatchScore
+	}
+
+	// Sort by score
+	sort.Slice(topCandidates, func(i, j int) bool {
+		return topCandidates[i].FinalMatchScore > topCandidates[j].FinalMatchScore
+	})
+
+	// Assign ranks
+	for i := range topCandidates {
+		topCandidates[i].Rank = i + 1
+	}
+
+	avgScore := 0.0
+	if len(topCandidates) > 0 {
+		avgScore = totalScore / float64(len(topCandidates))
+	}
+
+	return &FinalResult{
+		TopCandidates: topCandidates,
+		Summary: ResultSummary{
+			TotalCandidatesFound: candidates.SearchMetadata.TotalProfilesFound,
+			CandidatesPresented:  len(topCandidates),
+			AverageMatchScore:    avgScore,
+			SearchQuality:        "Fallback (Ranking Unavailable)",
+		},
+	}
+}
+
 // Helper to extract JSON from markdown code blocks
 func extractJSON(content string) string {
 	if strings.Contains(content, "```json") {

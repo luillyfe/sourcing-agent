@@ -204,7 +204,8 @@ func RunStage2(client llm.Client, githubClient *github.Client, query string) (*F
 	// Step 4: Rank and Present
 	finalResult, err := rankAndPresent(client, enrichedCandidates, requirements)
 	if err != nil {
-		return nil, fmt.Errorf("ranking failed: %w", err)
+		fmt.Printf("Ranking step failed (%v), falling back to unranked results.\n", err)
+		finalResult = createFallbackResult(enrichedCandidates)
 	}
 
 	return finalResult, nil

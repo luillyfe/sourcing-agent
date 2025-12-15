@@ -1195,7 +1195,7 @@ Summary:
 
 ### 13.1 Prompt-Level Errors
 - Requirements parsing fails → Return error, ask for clarification
-- Strategy generation fails → Use default search strategy
+- Strategy generation fails → Use default search strategy (In Design - Not Implemented)
 - Search execution fails → Try fallback searches
 - Ranking fails → Return unranked enriched candidates
 
