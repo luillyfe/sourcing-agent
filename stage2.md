@@ -1145,7 +1145,7 @@ Summary:
 - Total execution time: 60-120 seconds
 - API calls: 15-30 per query
 - Memory usage: Reasonable for web service
-- Error rate: < 5% of queries
+- Error rate: < 5% of queries (TODO: Measurement mechanism to be implemented later)
 
 ## 11. LIMITATIONS
 
