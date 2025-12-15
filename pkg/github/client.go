@@ -26,8 +26,9 @@ type Repository struct {
 
 // Client handles interactions with the GitHub API
 type Client struct {
-	BaseURL string
-	Token   string
+	BaseURL    string
+	Token      string
+	HTTPClient *http.Client
 }
 
 // NewClient creates a new GitHubClient
@@ -35,6 +36,9 @@ func NewClient(token string) *Client {
 	return &Client{
 		BaseURL: "https://api.github.com",
 		Token:   token,
+		HTTPClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
 	}
 }
 
@@ -76,7 +80,7 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 	req.Header.Set("Authorization", fmt.Sprintf("token %s", c.Token))
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := c.HTTPClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
@@ -155,7 +159,7 @@ func (c *Client) GetUserDetail(username string) (*UserDetail, error) {
 	req.Header.Set("Authorization", fmt.Sprintf("token %s", c.Token))
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := c.HTTPClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
@@ -192,7 +196,7 @@ func (c *Client) GetDeveloperRepositories(username string, maxRepos int) ([]Repo
 	req.Header.Set("Authorization", fmt.Sprintf("token %s", c.Token))
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := c.HTTPClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)

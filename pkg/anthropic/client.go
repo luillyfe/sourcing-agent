@@ -19,13 +19,17 @@ const (
 
 // Client handles interactions with the Anthropic API
 type Client struct {
-	APIKey string
+	APIKey     string
+	HTTPClient *http.Client
 }
 
 // NewClient creates a new Anthropic Client
 func NewClient(apiKey string) *Client {
 	return &Client{
 		APIKey: apiKey,
+		HTTPClient: &http.Client{
+			Timeout: 60 * time.Second,
+		},
 	}
 }
 
@@ -85,7 +89,7 @@ func (c *Client) CallAPI(messages []llm.Message, tools []llm.Tool) (*llm.Respons
 	req.Header.Set("x-api-key", c.APIKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
 
-	client := &http.Client{Timeout: 60 * time.Second}
+	client := c.HTTPClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
