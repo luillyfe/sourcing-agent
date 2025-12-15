@@ -2,11 +2,13 @@ package agent
 
 // Requirements structure (output of Prompt 1)
 type Requirements struct {
-	RequiredSkills  []string `json:"required_skills"`
-	ExperienceLevel string   `json:"experience_level"`
-	Locations       []string `json:"locations"`
-	Keywords        []string `json:"keywords"`
-	NiceToHave      []string `json:"nice_to_have"`
+	RequiredSkills        []string `json:"required_skills"`
+	ExperienceLevel       string   `json:"experience_level"`
+	Locations             []string `json:"locations"`
+	Keywords              []string `json:"keywords"`
+	NiceToHave            []string `json:"nice_to_have"`
+	UnclearRequest        bool     `json:"unclear_request,omitempty"`
+	ClarificationQuestion string   `json:"clarification_question,omitempty"`
 }
 
 // Search Strategy structure (output of Prompt 2)

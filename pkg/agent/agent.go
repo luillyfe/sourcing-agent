@@ -178,6 +178,11 @@ func RunStage2(client llm.Client, githubClient *github.Client, query string) (*F
 	}
 	fmt.Printf("Requirements: %+v\n", requirements)
 
+	// Check for unclear requirements (Fail Fast)
+	if requirements.UnclearRequest {
+		return nil, fmt.Errorf("request unclear: %s", requirements.ClarificationQuestion)
+	}
+
 	fmt.Println("Step 2: Generating search strategy...")
 	// Step 2: Generate Search Strategy
 	strategy, err := generateSearchStrategy(client, requirements)

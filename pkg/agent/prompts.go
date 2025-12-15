@@ -29,10 +29,13 @@ Output Format (JSON):
   "experience_level": "senior|mid|junior|lead",
   "locations": ["location1", "location2"],
   "keywords": ["keyword1", "keyword2"],
-  "nice_to_have": ["skill3", "skill4"]
+  "nice_to_have": ["skill3", "skill4"],
+  "unclear_request": false,
+  "clarification_question": "string (only if unclear)"
 }
 
-Be specific and extract all relevant information from the query.`
+Be specific and extract all relevant information from the query.
+If the query is too vague (e.g., "find developers", "search github"), set "unclear_request" to true and ask a specific clarification question.`
 
 	messages := []llm.Message{
 		{
