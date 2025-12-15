@@ -1150,13 +1150,13 @@ Summary:
 ## 11. LIMITATIONS
 
 ### Still Missing (Reserved for Stage 3+):
-✗ No self-evaluation or refinement loops
-✗ No quality assessment of results
-✗ No dynamic strategy adjustment
-✗ No learning from feedback
-✗ Pipeline is fixed (can't skip or repeat steps)
-✗ No conversation/iteration with user
-✗ No handling of ambiguous requirements
+✗ No self-evaluation or refinement loops\
+✗ No quality assessment of results\
+✗ No dynamic strategy adjustment\
+✗ No learning from feedback\
+✗ Pipeline is fixed (can't skip or repeat steps)\
+✗ No conversation/iteration with user\
+✗ No handling of ambiguous requirements\
 ✗ No cross-platform search (only GitHub)
 
 ### By Design (Appropriate for Stage 2):

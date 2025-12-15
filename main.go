@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -104,4 +105,14 @@ func main() {
 	fmt.Printf("\nTotal execution time: %.2f seconds\n", duration.Seconds())
 	fmt.Printf("Total LLM calls: %d\n", countingLLMClient.Count)
 	fmt.Printf("Total GitHub API calls: %d\n", countingTransport.Count)
+
+	// Memory usage
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	fmt.Printf("Memory usage: Alloc = %v MiB, TotalAlloc = %v MiB, Sys = %v MiB, NumGC = %v\n",
+		bToMb(m.Alloc), bToMb(m.TotalAlloc), bToMb(m.Sys), m.NumGC)
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
 }
