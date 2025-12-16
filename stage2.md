@@ -1200,9 +1200,9 @@ Summary:
 - Ranking fails → Return unranked enriched candidates
 
 ### 13.2 Tool-Level Errors
-- GitHub API rate limit → Wait and retry or return partial results
-- Repository fetch fails → Skip that candidate or use basic profile only
-- Network timeout → Retry with exponential backoff
+- GitHub API rate limit → Wait and retry or return partial results (In Design - Not Implemented)
+- Repository fetch fails → Skip that candidate
+- Network timeout → Retry with exponential backoff (In Design - Not Implemented)
 
 ### 13.3 Pipeline Recovery
 If any step fails:
@@ -1212,10 +1212,10 @@ If any step fails:
 4. Return informative error message to user
 
 **Example Recovery Strategy:**
-Prompt 3 finds only 5 candidates (target was 15)
+Prompt 3 finds 0 candidates (or API fails)
 → Try fallback search
-→ If still insufficient, proceed with what we have
-→ Note in final output: "Limited results, consider broader criteria"
+→ If candidates found, return them (do not mix with primary)
+→ If still 0 candidates, return empty set with "No candidates found" message
 
 ### 13.4 Data Validation
 Between each prompt:

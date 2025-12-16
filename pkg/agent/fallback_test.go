@@ -80,7 +80,11 @@ func TestFindAndEnrichCandidates_FallbackStrategies(t *testing.T) {
 	defer mockGitHub.Close()
 
 	// Create Clients
-	ghClient := &github.Client{BaseURL: mockGitHub.URL, Token: "mock-token"}
+	ghClient := &github.Client{
+		BaseURL:    mockGitHub.URL,
+		Token:      "mock-token",
+		HTTPClient: &http.Client{},
+	}
 	llmClient := &MockLLMClient{}
 
 	// Create Strategy with 2 fallbacks
