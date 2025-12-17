@@ -1211,10 +1211,10 @@ If any step fails:
 3. Proceed with partial results if acceptable
 4. Return informative error message to user
 
-**Example Recovery Strategy:**
-Prompt 3 finds 0 candidates (or API fails)
-→ Try fallback search
-→ If candidates found, return them (do not mix with primary)
+**Example Recovery Strategy:**\
+Prompt 3 finds 0 candidates (or API fails)\
+→ Try fallback search\
+→ If candidates found, return them (do not mix with primary)\
 → If still 0 candidates, return empty set with "No candidates found" message
 
 ### 13.4 Data Validation
