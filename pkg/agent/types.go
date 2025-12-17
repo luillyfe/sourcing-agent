@@ -1,5 +1,7 @@
 package agent
 
+import "fmt"
+
 // Requirements structure (output of Prompt 1)
 type Requirements struct {
 	RequiredSkills        []string `json:"required_skills"`
@@ -125,4 +127,33 @@ type ResultSummary struct {
 type RelevanceAnalysis struct {
 	Score   float64
 	Reasons []string
+}
+
+// Validator interface for data structures
+type Validator interface {
+	Validate() error
+}
+
+func (r *Requirements) Validate() error {
+	if len(r.RequiredSkills) == 0 {
+		return fmt.Errorf("required_skills cannot be empty")
+	}
+	if r.ExperienceLevel == "" {
+		return fmt.Errorf("experience_level cannot be empty")
+	}
+	return nil
+}
+
+func (s *SearchStrategy) Validate() error {
+	if s.PrimarySearch.Language == "" {
+		return fmt.Errorf("primary_search.language cannot be empty")
+	}
+	return nil
+}
+
+func (e *EnrichedCandidates) Validate() error {
+	if e.Candidates == nil {
+		return fmt.Errorf("candidates list cannot be nil")
+	}
+	return nil
 }

@@ -68,6 +68,10 @@ If the query is too vague (e.g., "find developers", "search github"), set "uncle
 		return nil, fmt.Errorf("failed to parse requirements JSON: %w", err)
 	}
 
+	if err := requirements.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid requirements: %w", err)
+	}
+
 	return &requirements, nil
 }
 
@@ -169,6 +173,10 @@ Given structured job requirements, generate an optimal search strategy:
 	var strategy SearchStrategy
 	if err := json.Unmarshal([]byte(jsonStr), &strategy); err != nil {
 		return nil, fmt.Errorf("failed to parse strategy JSON: %w", err)
+	}
+
+	if err := strategy.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid strategy: %w", err)
 	}
 
 	return &strategy, nil
@@ -371,14 +379,20 @@ func findAndEnrichCandidates(client llm.Client, githubClient *github.Client, str
 		})
 	}
 
-	return &EnrichedCandidates{
+	finalEnrichedCandidates := &EnrichedCandidates{
 		Candidates: enriched,
 		SearchMetadata: SearchMetadata{
 			SearchesExecuted:   searchesExecuted,
 			TotalProfilesFound: len(candidates),
 			ProfilesAnalyzed:   profilesAnalyzed,
 		},
-	}, nil
+	}
+
+	if err := finalEnrichedCandidates.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid enriched candidates: %w", err)
+	}
+
+	return finalEnrichedCandidates, nil
 }
 
 // rankAndPresent (Prompt 4)
