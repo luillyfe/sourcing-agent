@@ -23,11 +23,15 @@ This is a **Stage 2: Multi-Prompt Sourcing Agent**, representing a significant e
 - 🛡️ **Rate Limit Aware**: Optimized to work within GitHub's API constraints.
 - 👁️ **Full Observability**: Reports execution time, token usage, and API call counts for every run.
 
-## Architecture: The 4-Step Pipeline
+## System Architecture
+
+<img src="Sourcing%20Agent%20Architecture%20Stage%202.png" width="1200" alt="Stage 2 System Architecture">
+
+## Workflow: The 4-Step Pipeline
 
 The agent follows a strict 4-step linear workflow:
 
-<img src="Sourcing%20Agent%20Stage%202.png" width="400" alt="Stage 2 Workflow">
+<img src="Sourcing%20Agent%20Stage%202.png" width="250" alt="Stage 2 Workflow">
 
 1.  **Requirements Analyzer**: "Find Go devs in Lima" -> `{Skills: ["Go"], Location: "Lima"}`
 2.  **Strategy Generator**: Creates a primary search (strict) and fallback searches (broader).
