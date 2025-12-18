@@ -23,8 +23,9 @@ func TestExecuteTool(t *testing.T) {
 	defer server.Close()
 
 	client := &github.Client{
-		BaseURL: server.URL,
-		Token:   "test-token",
+		BaseURL:    server.URL,
+		Token:      "test-token",
+		HTTPClient: &http.Client{},
 	}
 
 	t.Run("UnknownTool", func(t *testing.T) {

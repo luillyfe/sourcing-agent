@@ -5,15 +5,30 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 )
 
+// Repository represents a GitHub repository
+type Repository struct {
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Language    string   `json:"language"`
+	Stars       int      `json:"stargazers_count"`
+	Forks       int      `json:"forks_count"`
+	Topics      []string `json:"topics"`
+	URL         string   `json:"html_url"`
+	CreatedAt   string   `json:"created_at"`
+	UpdatedAt   string   `json:"updated_at"`
+}
+
 // Client handles interactions with the GitHub API
 type Client struct {
-	BaseURL string
-	Token   string
+	BaseURL    string
+	Token      string
+	HTTPClient *http.Client
 }
 
 // NewClient creates a new GitHubClient
@@ -21,6 +36,9 @@ func NewClient(token string) *Client {
 	return &Client{
 		BaseURL: "https://api.github.com",
 		Token:   token,
+		HTTPClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
 	}
 }
 
@@ -44,13 +62,17 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 		queryParts = append(queryParts, fmt.Sprintf("location:%s", input.Location))
 	}
 
-	query := strings.Join(queryParts, "+")
+	query := strings.Join(queryParts, " ")
+
+	// Encode the query to handle special characters (e.g., accents)
+	encodedQuery := url.QueryEscape(query)
 
 	// Call GitHub Search API
-	// Note: We use the BaseURL from the client
-	url := fmt.Sprintf("%s/search/users?q=%s&per_page=%d", c.BaseURL, query, input.MaxResults)
+	// Request up to 100 results per page to allow for filtering attrition
+	apiURL := fmt.Sprintf("%s/search/users?q=%s&per_page=100", c.BaseURL, encodedQuery)
+	fmt.Println("SearchDevelopers: ", apiURL)
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -58,7 +80,7 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 	req.Header.Set("Authorization", fmt.Sprintf("token %s", c.Token))
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := c.HTTPClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
@@ -78,11 +100,13 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 	if err := json.Unmarshal(body, &searchResponse); err != nil {
 		return nil, fmt.Errorf("failed to parse search response: %w", err)
 	}
+	fmt.Println("SearchResponse: ", searchResponse)
 
 	// Enrich each user with detailed information
 	candidates := []Candidate{}
-	for i, user := range searchResponse.Items {
-		if i >= input.MaxResults {
+	for _, user := range searchResponse.Items {
+		// Stop if we have collected enough candidates
+		if len(candidates) >= input.MaxResults {
 			break
 		}
 
@@ -91,15 +115,6 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 			// Log error but continue with other users
 			fmt.Fprintf(os.Stderr, "Warning: failed to get details for user %s: %v\n", user.Login, err)
 			continue
-		}
-
-		// Filter by keywords if specified
-		if input.Keywords != "" {
-			keywords := strings.ToLower(input.Keywords)
-			bio := strings.ToLower(detail.Bio)
-			if !strings.Contains(bio, keywords) {
-				continue
-			}
 		}
 
 		candidate := Candidate{
@@ -133,8 +148,8 @@ func (c *Client) SearchDevelopers(input ToolInput) (*SearchResult, error) {
 
 // GetUserDetail retrieves detailed information for a GitHub user
 func (c *Client) GetUserDetail(username string) (*UserDetail, error) {
-	// Note: We use the BaseURL from the client
 	url := fmt.Sprintf("%s/users/%s", c.BaseURL, username)
+	fmt.Println("GetUserDetail: ", url)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -144,7 +159,7 @@ func (c *Client) GetUserDetail(username string) (*UserDetail, error) {
 	req.Header.Set("Authorization", fmt.Sprintf("token %s", c.Token))
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := c.HTTPClient
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
@@ -166,4 +181,37 @@ func (c *Client) GetUserDetail(username string) (*UserDetail, error) {
 	}
 
 	return &userDetail, nil
+}
+
+// GetDeveloperRepositories retrieves repositories for a developer
+func (c *Client) GetDeveloperRepositories(username string, maxRepos int) ([]Repository, error) {
+	url := fmt.Sprintf("%s/users/%s/repos?sort=stars&per_page=%d", c.BaseURL, username, maxRepos)
+	fmt.Println("GetDeveloperRepositories: ", url)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", c.Token))
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	client := c.HTTPClient
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("GitHub API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var repos []Repository
+	if err := json.NewDecoder(resp.Body).Decode(&repos); err != nil {
+		return nil, fmt.Errorf("failed to parse repositories: %w", err)
+	}
+
+	return repos, nil
 }

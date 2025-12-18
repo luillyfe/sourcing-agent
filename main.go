@@ -2,13 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"runtime"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/luillyfe/sourcing-agent/pkg/agent"
 	"github.com/luillyfe/sourcing-agent/pkg/github"
+	"github.com/luillyfe/sourcing-agent/pkg/observability"
 	"github.com/luillyfe/sourcing-agent/pkg/vertexai"
 )
 
@@ -64,7 +69,15 @@ func main() {
 	fmt.Println()
 
 	// Initialize clients
+	// 1. GitHub Client with Observability
+	countingTransport := &observability.CountingTransport{Transport: http.DefaultTransport}
+	httpClient := &http.Client{
+		Timeout:   30 * time.Second,
+		Transport: countingTransport,
+	}
+
 	githubClient := github.NewClient(githubToken)
+	githubClient.HTTPClient = httpClient
 
 	ctx := context.Background()
 	vertexClient, err := vertexai.NewClient(ctx, projectID, region)
@@ -74,13 +87,32 @@ func main() {
 	}
 	defer vertexClient.Close()
 
+	// 2. LLM Client with Observability
+	countingLLMClient := &observability.CountingLLMClient{Wrapped: vertexClient}
+
 	// Run the sourcing agent
-	result, err := agent.Run(vertexClient, githubClient, query)
+	startTime := time.Now()
+	result, err := agent.RunStage2(countingLLMClient, githubClient, query)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
+	duration := time.Since(startTime)
 
 	// Display result
-	fmt.Println(result)
+	resultJSON, _ := json.MarshalIndent(result, "", "  ")
+	fmt.Println(string(resultJSON))
+	fmt.Printf("\nTotal execution time: %.2f seconds\n", duration.Seconds())
+	fmt.Printf("Total LLM calls: %d\n", countingLLMClient.Count)
+	fmt.Printf("Total GitHub API calls: %d\n", countingTransport.Count)
+
+	// Memory usage
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	fmt.Printf("Memory usage: Alloc = %v MiB, TotalAlloc = %v MiB, Sys = %v MiB, NumGC = %v\n",
+		bToMb(m.Alloc), bToMb(m.TotalAlloc), bToMb(m.Sys), m.NumGC)
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
 }

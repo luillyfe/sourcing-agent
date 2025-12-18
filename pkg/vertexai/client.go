@@ -67,7 +67,18 @@ func (c *Client) CallAPI(messages []llm.Message, tools []llm.Tool) (*llm.Respons
 
 	// 2. Convert Messages to Gemini Contents
 	var contents []*genai.Content
+	var systemInstruction *genai.Content
+
 	for _, msg := range messages {
+		if msg.Role == "system" {
+			// Handle System Instruction
+			parts := convertMessageContent(msg.Content)
+			systemInstruction = &genai.Content{
+				Parts: parts,
+			}
+			continue
+		}
+
 		role := "user"
 		if msg.Role == "assistant" {
 			role = "model"
@@ -81,14 +92,14 @@ func (c *Client) CallAPI(messages []llm.Message, tools []llm.Tool) (*llm.Respons
 	}
 
 	// 3. Generate Content
-	// We pass the full history as contents.
-	// We need to set Tools in the config.
-
 	config := &genai.GenerateContentConfig{
 		Temperature: float32Ptr(0),
 	}
 	if toolConfig != nil {
 		config.Tools = []*genai.Tool{toolConfig}
+	}
+	if systemInstruction != nil {
+		config.SystemInstruction = systemInstruction
 	}
 
 	resp, err := c.client.Models.GenerateContent(context.Background(), modelName, contents, config)
@@ -231,6 +242,14 @@ func convertResponse(resp *genai.GenerateContentResponse) *llm.Response {
 	llmResp.Content = content
 	if llmResp.StopReason == "" {
 		llmResp.StopReason = "end_turn"
+	}
+
+	// Populate Usage Metadata
+	if resp.UsageMetadata != nil {
+		llmResp.Usage = llm.Usage{
+			InputTokens:  int(resp.UsageMetadata.PromptTokenCount),
+			OutputTokens: int(resp.UsageMetadata.CandidatesTokenCount),
+		}
 	}
 
 	return llmResp
