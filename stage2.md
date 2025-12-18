@@ -1289,11 +1289,11 @@ Between each prompt:
 - [x] Add execution time monitoring
 
 ### Phase 5: Documentation
-- [ ] Document each prompt's purpose
-- [ ] Create examples for each prompt
-- [ ] Document data structures
-- [ ] Add troubleshooting guide
-- [ ] Create usage examples
+- [x] Document each prompt's purpose
+- [x] Create examples for each prompt
+- [x] Document data structures
+- [x] Add troubleshooting guide
+- [x] Create usage examples
 
 **Estimated Implementation Time:** 3-5 days for MVP
 
@@ -1464,11 +1464,35 @@ Stage 3 will add "Evaluator-Optimizer" pattern on top of chaining:
 - Loop back if quality insufficient
 - This transforms Stage 2 into Stage 3
 
----
-
-**Document Version:** 1.0\
-**Last Updated:** 2025-12-10\
-**Target Implementation:** Go 1.21+\
-**Pattern:** Prompt Chaining (Stage 2 of 5)\
-**Previous Stage:** Stage 1 (Augmented LLM)\
-**Next Stage:** Stage 3 (Reflective Agent)
+## 21. TROUBLESHOOTING GUIDE
+ 
+ ### Common Issues
+ 
+ **1. "Requirements verification failed: required_skills cannot be empty"**
+ - **Cause:** The LLM failed to extract skills from the query.
+ - **Solution:** Try phrasing the query with explicit keywords or check if the prompt model needs tuning.
+ 
+ **2. "Strategy generation failed"**
+ - **Cause:** LLM could not produce valid JSON for the search strategy.
+ - **Solution:** Check if `VERTEX_PROJECT_ID` is set correctly and the model quota is not exceeded.
+ 
+ **3. "GitHub API request failed with status 403"**
+ - **Cause:** Rate limit exceeded or invalid token.
+ - **Solution:** Verify `GITHUB_TOKEN` validity and remaining rate limit. Wait a few minutes if rate limited.
+ 
+ **4. "No candidates found"**
+ - **Cause:** Search criteria too strict.
+ - **Solution:** The agent automatically tries fallback searches. If all fail, try a broader query (e.g., remove location or specific keywords).
+ 
+ **5. High Latency (> 2 minutes)**
+ - **Cause:** Too many tool calls or slow LLM response.
+ - **Solution:** Check the "Total execution time" log. Reduce `max_repos` in `agent.go` if fetching repositories is the bottleneck.
+ 
+ ---
+ 
+ **Document Version:** 1.0\
+ **Last Updated:** 2025-12-10\
+ **Target Implementation:** Go 1.21+\
+ **Pattern:** Prompt Chaining (Stage 2 of 5)\
+ **Previous Stage:** Stage 1 (Augmented LLM)\
+ **Next Stage:** Stage 3 (Reflective Agent)
