@@ -32,7 +32,7 @@ func TestRequirements_Validate(t *testing.T) {
 				RequiredSkills:  []string{"Go"},
 				ExperienceLevel: "",
 			},
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 

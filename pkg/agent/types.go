@@ -141,9 +141,8 @@ func (r *Requirements) Validate() error {
 	if len(r.RequiredSkills) == 0 {
 		return fmt.Errorf("required_skills cannot be empty")
 	}
-	if r.ExperienceLevel == "" {
-		return fmt.Errorf("experience_level cannot be empty")
-	}
+	// ExperienceLevel is now optional
+	// if r.ExperienceLevel == "" { return fmt.Errorf("experience_level cannot be empty") }
 	return nil
 }
 
