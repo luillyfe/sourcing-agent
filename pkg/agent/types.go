@@ -135,6 +135,9 @@ type Validator interface {
 }
 
 func (r *Requirements) Validate() error {
+	if r.UnclearRequest {
+		return nil
+	}
 	if len(r.RequiredSkills) == 0 {
 		return fmt.Errorf("required_skills cannot be empty")
 	}

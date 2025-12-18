@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/luillyfe/sourcing-agent/pkg/github"
 	"github.com/luillyfe/sourcing-agent/pkg/llm"
@@ -170,12 +171,19 @@ func getToolDefinition() llm.Tool {
 
 // RunStage2 executes the multi-prompt sourcing agent (Stage 2)
 func RunStage2(client llm.Client, githubClient *github.Client, query string) (*FinalResult, error) {
+	startTime := time.Now()
+	defer func() {
+		fmt.Printf("Total execution time: %v\n", time.Since(startTime))
+	}()
+
 	fmt.Println("Step 1: Analyzing requirements...")
+	stepStart := time.Now()
 	// Step 1: Analyze Requirements
 	requirements, err := analyzeRequirements(client, query)
 	if err != nil {
 		return nil, fmt.Errorf("requirements analysis failed: %w", err)
 	}
+	fmt.Printf("Requirements analysis took %v\n", time.Since(stepStart))
 	fmt.Printf("Requirements: %+v\n", requirements)
 
 	// Check for unclear requirements (Fail Fast)
@@ -184,29 +192,35 @@ func RunStage2(client llm.Client, githubClient *github.Client, query string) (*F
 	}
 
 	fmt.Println("Step 2: Generating search strategy...")
+	stepStart = time.Now()
 	// Step 2: Generate Search Strategy
 	strategy, err := generateSearchStrategy(client, requirements)
 	if err != nil {
 		return nil, fmt.Errorf("strategy generation failed: %w", err)
 	}
+	fmt.Printf("Strategy generation took %v\n", time.Since(stepStart))
 	strategyJSON, _ := json.MarshalIndent(strategy, "", "  ")
 	fmt.Printf("Strategy: %s\n", string(strategyJSON))
 
 	fmt.Println("Step 3: Finding and enriching candidates...")
+	stepStart = time.Now()
 	// Step 3: Find and Enrich Candidates
 	enrichedCandidates, err := findAndEnrichCandidates(client, githubClient, strategy, requirements)
 	if err != nil {
 		return nil, fmt.Errorf("candidate search failed: %w", err)
 	}
 	fmt.Printf("Found %d candidates, analyzed %d\n", enrichedCandidates.SearchMetadata.TotalProfilesFound, enrichedCandidates.SearchMetadata.ProfilesAnalyzed)
+	fmt.Printf("Candidate search and enrichment took %v\n", time.Since(stepStart))
 
 	fmt.Println("Step 4: Ranking and presenting...")
+	stepStart = time.Now()
 	// Step 4: Rank and Present
 	finalResult, err := rankAndPresent(client, enrichedCandidates, requirements)
 	if err != nil {
 		fmt.Printf("Ranking step failed (%v), falling back to unranked results.\n", err)
 		finalResult = createFallbackResult(enrichedCandidates)
 	}
+	fmt.Printf("Ranking took %v\n", time.Since(stepStart))
 
 	return finalResult, nil
 }

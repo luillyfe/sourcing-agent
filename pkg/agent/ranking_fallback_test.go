@@ -23,7 +23,7 @@ func (m *MockLLMClientForFallback) CallAPI(messages []llm.Message, tools []llm.T
 	if m.CallCount == 1 {
 		return &llm.Response{
 			Content: []llm.ContentBlock{
-				{Type: "text", Text: `{"required_skills": ["Go"], "locations": ["Remote"]}`},
+				{Type: "text", Text: `{"required_skills": ["Go"], "experience_level": "mid", "locations": ["Remote"]}`},
 			},
 		}, nil
 	}
