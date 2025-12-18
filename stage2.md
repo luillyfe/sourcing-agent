@@ -1433,28 +1433,28 @@ Between each prompt:
 This Stage 2 implements the "Prompt Chaining" pattern:
 
 ### Characteristics:
-✓ Multiple prompts in sequence
-✓ Each prompt has single responsibility
-✓ Output of one prompt feeds into next
-✓ Deterministic flow (no branching)
+✓ Multiple prompts in sequence\
+✓ Each prompt has single responsibility\
+✓ Output of one prompt feeds into next\
+✓ Deterministic flow (no branching)\
 ✓ Stateless between executions
 
 ### Benefits:
-✓ Easier to debug (inspect each step)
-✓ Easier to optimize (tune individual prompts)
-✓ More transparent (see intermediate results)
+✓ Easier to debug (inspect each step)\
+✓ Easier to optimize (tune individual prompts)\
+✓ More transparent (see intermediate results)\
 ✓ More modular (swap prompts independently)
 
 ### When to Use Prompt Chaining:
-✓ Task can be broken into clear sequential steps
-✓ Each step benefits from specialized instructions
-✓ Intermediate outputs are useful for debugging
+✓ Task can be broken into clear sequential steps\
+✓ Each step benefits from specialized instructions\
+✓ Intermediate outputs are useful for debugging\
 ✓ No need for loops or branching
 
 ### When NOT to Use:
-✗ Task is simple enough for single prompt
-✗ Steps need to be executed in parallel
-✗ Need dynamic branching based on results
+✗ Task is simple enough for single prompt\
+✗ Steps need to be executed in parallel\
+✗ Need dynamic branching based on results\
 ✗ Need evaluation/refinement loops
 
 ### Next Pattern (Stage 3):
