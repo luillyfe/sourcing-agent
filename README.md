@@ -1,59 +1,70 @@
-# GitHub Developer Sourcing Agent - Stage 1
+# GitHub Developer Sourcing Agent - Stage 2
 
-A Go-based AI agent that searches GitHub for developers matching hiring requirements using **Gemini 3 Pro** on **Google Cloud Vertex AI** and the Augmented LLM pattern.
+A Go-based AI agent that discovers and qualifies developers using **Prompt Chaining** with **Gemini 3 Pro** on **Google Cloud Vertex AI**.
 
 ## Overview
 
-This is a **Stage 1: Single-Shot Sourcing Agent** - the simplest possible implementation of an AI-powered developer sourcing system. It uses the **Augmented LLM pattern** where Gemini has access to tools and can search GitHub in a single conversation turn.
+This is a **Stage 2: Multi-Prompt Sourcing Agent**, representing a significant evolution from the single-shot approach. It implements the **Prompt Chaining** pattern to break down the complex task of sourcing into a deterministic pipeline of specialized steps: requirements analysis, strategy generation, candidate enrichment, and final ranking.
 
-### What Makes This Stage 1?
+### What Makes This "Stage 2"?
 
-- **One Query, One Response**: No loops, no iteration, no multi-step orchestration
-- **Single Tool**: One tool (`search_github_developers`) that does all the work
-- **Augmented LLM**: Gemini + tool access in a single invocation
-- **Foundation**: Simple pattern that can evolve into more complex architectures
+- **Prompt Chaining Architecture**: A sequential pipeline of 4 specialized LLM prompts.
+- **Dynamic Search Strategies**: Intelliqently generates primary and fallback search strategies based on requirements.
+- **Candidate Enrichment**: deeply analyzes developer repositories to assess technical fit beyond just bio matching.
+- **Weighted Scoring**: Programmatically calculates match scores based on skills, repo relevance, experience, and profile quality.
+- **Observability**: Built-in tracking for Token Usage, API Call Counts, and Memory execution stats.
 
 ## Features
 
-- 🤖 AI-powered developer search using **Gemini 3 Pro** on Vertex AI
-- 🔍 Natural language query processing
-- 🐙 GitHub API integration for comprehensive developer profiles
-- 📊 Rich candidate information (bio, repos, followers, location)
-- ⚡ Single-shot execution
-- 🎯 Keyword filtering in developer bios
-- 🔒 Secure API key management
+- 🧠 **Smart Requirements Analysis**: Parses natural language into structured technical requirements.
+- 🎯 **Strategic Searching**: Generates optimal GitHub search queries + fallback options if results are scarse.
+- 🔬 **Deep Repository Analysis**: Fetches and analyzes user repositories to verify claimed skills.
+- 📊 **Programmatic Ranking**: Scores candidates on a weighted scale (Skills 40%, Repos 30%, Experience 20%, Quality 10%).
+- 🛡️ **Rate Limit Aware**: Optimized to work within GitHub's API constraints.
+- 👁️ **Full Observability**: Reports execution time, token usage, and API call counts for every run.
+
+## Architecture: The 4-Step Pipeline
+
+The agent follows a strict 4-step linear workflow:
+
+<img src="Sourcing%20Agent%20Stage%202.png" width="400" alt="Stage 2 Workflow">
+
+1.  **Requirements Analyzer**: "Find Go devs in Lima" -> `{Skills: ["Go"], Location: "Lima"}`
+2.  **Strategy Generator**: Creates a primary search (strict) and fallback searches (broader).
+3.  **Candidate Enricher**: Executes GitHub searches, then fetches repositories for each candidate to analyze code relevance.
+4.  **Ranker**: Calculates final scores and formats the top candidates.
 
 ## Prerequisites
 
 - **Go 1.21 or higher**
 - **Google Cloud Project** with Vertex AI API enabled
-- **GitHub Personal Access Token** - [Get one here](https://github.com/settings/tokens)
-  - Required scope: `read:user`
+- **GitHub Personal Access Token**
+    - Required scope: `read:user`
 
 ## Installation
 
-1. Clone the repository:
-```bash
-git clone https://github.com/luillyfe/sourcing-agent.git
-cd sourcing-agent
-```
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/luillyfe/sourcing-agent.git
+    cd sourcing-agent
+    ```
 
-2. Install dependencies:
-```bash
-go mod download
-```
+2.  Install dependencies:
+    ```bash
+    go mod download
+    ```
 
-3. Set up your environment variables:
-```bash
-cp .env.example .env
-```
+3.  Set up your environment variables:
+    ```bash
+    cp .env.example .env
+    ```
 
-4. Edit `.env` and add your configuration:
-```env
-VERTEX_PROJECT_ID=your_google_cloud_project_id
-VERTEX_REGION=us-central1
-GITHUB_TOKEN=your_actual_github_token_here
-```
+4.  Edit `.env` and add your configuration:
+    ```env
+    VERTEX_PROJECT_ID=your_google_cloud_project_id
+    VERTEX_REGION=us-central1
+    GITHUB_TOKEN=your_actual_github_token_here
+    ```
 
 ## Usage
 
@@ -65,173 +76,81 @@ Run the application with a natural language query:
 go run main.go "Find Go developers in Lima"
 ```
 
-### Build and Run
+### Example Output
 
-```bash
-go build -o sourcing-agent
-./sourcing-agent "Looking for Python engineers in Peru"
-```
+The agent provides real-time progress updates and a detailed JSON final report:
 
-### Example Queries
-
-```bash
-# Search by language and location
-go run main.go "Find Go developers in Lima"
-
-# Search with keywords
-go run main.go "Looking for Python engineers with machine learning experience"
-
-# Search by language only
-go run main.go "Need React developers with TypeScript experience"
-
-# Search in broader regions
-go run main.go "Find JavaScript developers in Latin America"
-```
-
-## Example Output
-
-```
+```text
 === GitHub Developer Sourcing Agent ===
-Query: Find Go developers in Lima with microservices experience
+Query: Find Go developers in Lima
 
 Searching...
 
-I found 8 Go developers in Lima with microservices experience:
+Step 1: Analyzing requirements...
+Requirements analysis took 1.2s
+  Usage: 154 input, 45 output tokens
 
-1. fermin_tech (@fermin_tech)
-   - Lima, Peru
-   - Cloud Engineer | Go microservices | MongoDB
-   - 25 public repos, 89 followers
-   - https://github.com/fermin_tech
+Step 2: Generating search strategy...
+Strategy generation took 1.5s
+  Usage: 450 input, 320 output tokens
 
-2. carlos_backend (@carlos_backend)
-   - Lima, Peru
-   - Backend Developer | Go | Kubernetes | Microservices
-   - 32 public repos, 156 followers
-   - https://github.com/carlos_backend
+Step 3: Finding and enriching candidates...
+Found 12 candidates, analyzed 12
+Candidate search and enrichment took 4.5s
 
-[... 6 more candidates]
-```
+Step 4: Ranking and presenting...
+Ranking took 2.1s
+  Usage: 2100 input, 800 output tokens
 
-## How It Works
+--------------------------------------------------
+Total Token Usage: 2704 input + 1165 output = 3869 total
+--------------------------------------------------
 
-### Architecture
-
-```
-User Query → Gemini (LLM) + Tool → GitHub API → Result
-```
-
-### Process Flow
-
-1. **User provides natural language query**
-   - Example: "Find Go developers in Lima"
-
-2. **Gemini parses the query**
-   - Extracts: language="go", location="lima"
-
-3. **Gemini calls the search_github_developers tool**
-   - Passes extracted parameters
-
-4. **Tool searches GitHub**
-   - Builds search query
-   - Calls GitHub Search API
-   - Enriches results with user details
-   - Filters by keywords if specified
-
-5. **Gemini formats and presents results**
-   - Clear, readable candidate profiles
-   - Ready to use
-
-### Tool: search_github_developers
-
-The system has ONE tool that does all the work:
-
-**Parameters:**
-- `language` (required) - Programming language (e.g., 'python', 'go', 'javascript')
-- `location` (optional) - Geographic location (e.g., 'lima', 'peru', 'san francisco')
-- `keywords` (optional) - Keywords in user bio (e.g., 'microservices', 'mongodb')
-- `min_repos` (default: 5) - Minimum public repositories
-- `max_results` (default: 10) - Maximum candidates to return
-
-**Returns:**
-```json
 {
-  "candidates": [
+  "top_candidates": [
     {
-      "username": "dev_user",
-      "name": "John Doe",
-      "location": "Lima, Peru",
-      "bio": "Go developer building microservices",
-      "public_repos": 45,
-      "followers": 120,
-      "github_url": "https://github.com/dev_user",
-      "avatar_url": "https://..."
+      "rank": 1,
+      "username": "fermin_tech",
+      "final_match_score": 0.92,
+      "match_breakdown": {
+        "required_skills_score": 1.0,
+        "repository_relevance_score": 0.9,
+        "experience_score": 0.8,
+        "profile_quality_score": 0.9
+      },
+      "key_qualifications": ["Go", "Microservices", "Cloud"],
+      "match_reasoning": "Strong match with active Go repositories..."
     }
   ],
-  "total_found": 10,
-  "search_criteria": {
-    "language": "go",
-    "location": "lima",
-    "keywords": "microservices"
+  "summary": {
+    "total_candidates_found": 12,
+    "candidates_presented": 10,
+    "average_match_score": 0.78,
+    "search_quality": "excellent"
   }
 }
+
+Total execution time: 9.35 seconds
+Total LLM calls: 3
+Total GitHub API calls: 14
+Memory usage: Alloc = 25 MiB...
 ```
 
 ## Project Structure
 
 ```
 sourcing-agent/
-├── main.go           # Main implementation
-│   ├── GitHub API integration
-│   ├── Vertex AI Gemini integration
-│   ├── Tool definition and execution
-│   └── Sourcing agent logic
-├── main_test.go      # Unit tests
-├── go.mod            # Go module dependencies
-├── go.sum            # Dependency checksums
-├── .env.example      # Environment variable template
-├── .env              # Your actual API keys (gitignored)
-├── .gitignore        # Git ignore rules
-├── LICENSE           # MIT License
-└── README.md         # This file
-```
-
-## API Details
-
-### Google Cloud Vertex AI
-
-- **Model**: gemini-3-pro-preview
-- **SDK**: cloud.google.com/go/vertexai/genai
-- **Pattern**: Augmented LLM with tool use
-
-### GitHub API
-
-- **Endpoints Used**:
-  - `GET /search/users` - Find developers
-  - `GET /users/{username}` - Get user details
-- **Rate Limits**:
-  - Authenticated: 5,000 requests/hour
-  - Search API: 30 requests/minute
-- **Authentication**: Personal Access Token
-
-## Testing
-
-### Run Tests
-
-```bash
-go test -v
-```
-
-### Run Benchmarks
-
-```bash
-go test -bench=.
-```
-
-### Test Coverage
-
-```bash
-go test -cover
+├── main.go               # Entry point, client initialization, observability setup
+├── pkg/
+│   ├── agent/            # Core Agent Logic
+│   │   ├── agent.go      # Pipeline orchestration (RunStage2)
+│   │   ├── prompts.go    # System prompts for each step
+│   │   └── types.go      # Data structures (Requirements, Strategy, etc.)
+│   ├── github/           # GitHub API Client
+│   ├── llm/              # LLM Interface definition
+│   ├── observability/    # Metrics (CountingTransport, CountingLLMClient)
+│   └── vertexai/         # Vertex AI specific implementation
+└── docs/                 # Design documents (Stage 1, Stage 2)
 ```
 
 ## Configuration
@@ -239,87 +158,10 @@ go test -cover
 ### Environment Variables
 
 | Variable | Required | Description |
-|----------|----------|-------------|
+| :--- | :--- | :--- |
 | `VERTEX_PROJECT_ID` | Yes | Your Google Cloud Project ID |
 | `VERTEX_REGION` | Yes | Your Google Cloud Region (e.g., us-central1) |
 | `GITHUB_TOKEN` | Yes | Your GitHub Personal Access Token |
-
-## Error Handling
-
-The agent handles several error cases gracefully:
-
-- **Missing Environment Variables**: Clear error message with setup instructions
-- **Rate Limit Exceeded**: Returns error with retry suggestion
-- **Invalid Location**: Returns available results
-- **No Results Found**: Informs user and suggests broader criteria
-- **API Failures**: Clear error messages with debugging information
-
-## Limitations (By Design)
-
-Stage 1 does NOT include:
-
-- ❌ No iteration or refinement
-- ❌ No deep repository analysis
-- ❌ No cross-platform search (only GitHub)
-- ❌ No evaluation/scoring logic
-- ❌ No follow-up questions
-- ❌ No conversation history
-
-These are features for future stages (Stage 2+).
-
-## Future Stages
-
-This Stage 1 implementation is the foundation for more advanced patterns:
-
-- **Stage 2**: Multi-prompt with prompt chaining (sequential prompts)
-- **Stage 3**: Reflective agent with evaluation and refinement
-- **Stage 4**: Integrated system with multiple sources (LinkedIn, internal ATS)
-- **Stage 5**: Autonomous agent with goal-driven behavior
-
-## Security
-
-- API keys stored in `.env` files (excluded from git)
-- Never commit `.env` file or expose API keys
-- Input validation for all user inputs
-- Safe HTTP client with timeouts
-- No execution of arbitrary code
-
-## Performance
-
-- **Execution Time**: < 30 seconds typical
-- **API Calls**: 1 Gemini call + N+1 GitHub calls (N = number of candidates)
-- **Rate Limits**: Well within GitHub's limits for single searches
-- **Memory**: Minimal (<50MB typical)
-
-## Troubleshooting
-
-### "VERTEX_PROJECT_ID environment variable is not set"
-
-Create a `.env` file with your Project ID:
-```env
-VERTEX_PROJECT_ID=my-project-id
-```
-
-### "GITHUB_TOKEN environment variable is not set"
-
-Add your GitHub token to `.env`:
-```env
-GITHUB_TOKEN=ghp_...
-```
-
-### "GitHub API request failed with status 403"
-
-Check your GitHub token:
-- Ensure it has `read:user` scope
-- Verify it hasn't expired
-- Check rate limits: https://api.github.com/rate_limit
-
-### "No results found"
-
-Try broader search criteria:
-- Remove location filter
-- Use more general keywords
-- Lower `min_repos` requirement
 
 ## License
 
