@@ -11,7 +11,7 @@ import (
 )
 
 // analyzeRequirements (Prompt 1)
-func analyzeRequirements(client llm.Client, userQuery string) (*Requirements, error) {
+func analyzeRequirements(client llm.Client, userQuery string) (*Requirements, *llm.Usage, error) {
 	systemPrompt := `You are a requirements analyzer for technical recruiting.
 
 Your task: Parse the user's hiring request into structured requirements.
@@ -50,7 +50,7 @@ If the query is too vague (e.g., "find developers", "search github"), set "uncle
 
 	resp, err := client.CallAPI(messages, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call LLM: %w", err)
+		return nil, nil, fmt.Errorf("failed to call LLM: %w", err)
 	}
 
 	var content string
@@ -65,18 +65,18 @@ If the query is too vague (e.g., "find developers", "search github"), set "uncle
 
 	var requirements Requirements
 	if err := json.Unmarshal([]byte(jsonStr), &requirements); err != nil {
-		return nil, fmt.Errorf("failed to parse requirements JSON: %w", err)
+		return nil, &resp.Usage, fmt.Errorf("failed to parse requirements JSON: %w", err)
 	}
 
 	if err := requirements.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid requirements: %w", err)
+		return nil, &resp.Usage, fmt.Errorf("invalid requirements: %w", err)
 	}
 
-	return &requirements, nil
+	return &requirements, &resp.Usage, nil
 }
 
 // generateSearchStrategy (Prompt 2)
-func generateSearchStrategy(client llm.Client, requirements *Requirements) (*SearchStrategy, error) {
+func generateSearchStrategy(client llm.Client, requirements *Requirements) (*SearchStrategy, *llm.Usage, error) {
 	systemPrompt := `You are a search strategy expert for GitHub developer sourcing.
 
 ## Available Search Capabilities
@@ -158,7 +158,7 @@ Given structured job requirements, generate an optimal search strategy:
 
 	resp, err := client.CallAPI(messages, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call LLM: %w", err)
+		return nil, nil, fmt.Errorf("failed to call LLM: %w", err)
 	}
 
 	var content string
@@ -172,14 +172,14 @@ Given structured job requirements, generate an optimal search strategy:
 
 	var strategy SearchStrategy
 	if err := json.Unmarshal([]byte(jsonStr), &strategy); err != nil {
-		return nil, fmt.Errorf("failed to parse strategy JSON: %w", err)
+		return nil, &resp.Usage, fmt.Errorf("failed to parse strategy JSON: %w", err)
 	}
 
 	if err := strategy.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid strategy: %w", err)
+		return nil, &resp.Usage, fmt.Errorf("invalid strategy: %w", err)
 	}
 
-	return &strategy, nil
+	return &strategy, &resp.Usage, nil
 }
 
 // findAndEnrichCandidates (Prompt 3)
@@ -396,7 +396,7 @@ func findAndEnrichCandidates(client llm.Client, githubClient *github.Client, str
 }
 
 // rankAndPresent (Prompt 4)
-func rankAndPresent(client llm.Client, candidates *EnrichedCandidates, requirements *Requirements) (*FinalResult, error) {
+func rankAndPresent(client llm.Client, candidates *EnrichedCandidates, requirements *Requirements) (*FinalResult, *llm.Usage, error) {
 	systemPrompt := `You are a candidate ranking and presentation specialist.
 
 Given enriched candidate data, produce final rankings and presentation.
@@ -466,7 +466,7 @@ Output Format (JSON):
 
 	resp, err := client.CallAPI(messages, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to call LLM: %w", err)
+		return nil, nil, fmt.Errorf("failed to call LLM: %w", err)
 	}
 
 	var content string
@@ -480,7 +480,7 @@ Output Format (JSON):
 
 	var result FinalResult
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse final result JSON: %w", err)
+		return nil, &resp.Usage, fmt.Errorf("failed to parse final result JSON: %w", err)
 	}
 
 	// Calculate scores programmatically to ensure accuracy
@@ -514,7 +514,7 @@ Output Format (JSON):
 		result.Summary.AverageMatchScore = totalScore / float64(len(result.TopCandidates))
 	}
 
-	return &result, nil
+	return &result, &resp.Usage, nil
 }
 
 // createFallbackResult creates a FinalResult from enriched candidates without LLM ranking

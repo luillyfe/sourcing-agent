@@ -176,14 +176,21 @@ func RunStage2(client llm.Client, githubClient *github.Client, query string) (*F
 		fmt.Printf("Total execution time: %v\n", time.Since(startTime))
 	}()
 
+	var totalInputTokens, totalOutputTokens int
+
 	fmt.Println("Step 1: Analyzing requirements...")
 	stepStart := time.Now()
 	// Step 1: Analyze Requirements
-	requirements, err := analyzeRequirements(client, query)
+	requirements, usage, err := analyzeRequirements(client, query)
 	if err != nil {
 		return nil, fmt.Errorf("requirements analysis failed: %w", err)
 	}
 	fmt.Printf("Requirements analysis took %v\n", time.Since(stepStart))
+	if usage != nil {
+		fmt.Printf("  Usage: %d input, %d output tokens\n", usage.InputTokens, usage.OutputTokens)
+		totalInputTokens += usage.InputTokens
+		totalOutputTokens += usage.OutputTokens
+	}
 	fmt.Printf("Requirements: %+v\n", requirements)
 
 	// Check for unclear requirements (Fail Fast)
@@ -194,17 +201,23 @@ func RunStage2(client llm.Client, githubClient *github.Client, query string) (*F
 	fmt.Println("Step 2: Generating search strategy...")
 	stepStart = time.Now()
 	// Step 2: Generate Search Strategy
-	strategy, err := generateSearchStrategy(client, requirements)
+	strategy, usage, err := generateSearchStrategy(client, requirements)
 	if err != nil {
 		return nil, fmt.Errorf("strategy generation failed: %w", err)
 	}
 	fmt.Printf("Strategy generation took %v\n", time.Since(stepStart))
+	if usage != nil {
+		fmt.Printf("  Usage: %d input, %d output tokens\n", usage.InputTokens, usage.OutputTokens)
+		totalInputTokens += usage.InputTokens
+		totalOutputTokens += usage.OutputTokens
+	}
 	strategyJSON, _ := json.MarshalIndent(strategy, "", "  ")
 	fmt.Printf("Strategy: %s\n", string(strategyJSON))
 
 	fmt.Println("Step 3: Finding and enriching candidates...")
 	stepStart = time.Now()
 	// Step 3: Find and Enrich Candidates
+	// Note: Prompt 3 is currently programmatic (no LLM usage), so no tokens to track for now.
 	enrichedCandidates, err := findAndEnrichCandidates(client, githubClient, strategy, requirements)
 	if err != nil {
 		return nil, fmt.Errorf("candidate search failed: %w", err)
@@ -215,12 +228,21 @@ func RunStage2(client llm.Client, githubClient *github.Client, query string) (*F
 	fmt.Println("Step 4: Ranking and presenting...")
 	stepStart = time.Now()
 	// Step 4: Rank and Present
-	finalResult, err := rankAndPresent(client, enrichedCandidates, requirements)
+	finalResult, usage, err := rankAndPresent(client, enrichedCandidates, requirements)
 	if err != nil {
 		fmt.Printf("Ranking step failed (%v), falling back to unranked results.\n", err)
 		finalResult = createFallbackResult(enrichedCandidates)
+	} else if usage != nil {
+		fmt.Printf("  Usage: %d input, %d output tokens\n", usage.InputTokens, usage.OutputTokens)
+		totalInputTokens += usage.InputTokens
+		totalOutputTokens += usage.OutputTokens
 	}
 	fmt.Printf("Ranking took %v\n", time.Since(stepStart))
+
+	fmt.Println("--------------------------------------------------")
+	fmt.Printf("Total Token Usage: %d input + %d output = %d total\n",
+		totalInputTokens, totalOutputTokens, totalInputTokens+totalOutputTokens)
+	fmt.Println("--------------------------------------------------")
 
 	return finalResult, nil
 }

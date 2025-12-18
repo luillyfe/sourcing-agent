@@ -33,7 +33,7 @@ Here are the requirements:
 		},
 	}
 
-	reqs, err := analyzeRequirements(client, "Find senior Go devs in Lima")
+	reqs, _, err := analyzeRequirements(client, "Find senior Go devs in Lima")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -85,7 +85,7 @@ func TestGenerateSearchStrategy(t *testing.T) {
 	}
 	reqs := &Requirements{RequiredSkills: []string{"Go"}}
 
-	strategy, err := generateSearchStrategy(client, reqs)
+	strategy, _, err := generateSearchStrategy(client, reqs)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}

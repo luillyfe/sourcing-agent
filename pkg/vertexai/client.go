@@ -244,5 +244,13 @@ func convertResponse(resp *genai.GenerateContentResponse) *llm.Response {
 		llmResp.StopReason = "end_turn"
 	}
 
+	// Populate Usage Metadata
+	if resp.UsageMetadata != nil {
+		llmResp.Usage = llm.Usage{
+			InputTokens:  int(resp.UsageMetadata.PromptTokenCount),
+			OutputTokens: int(resp.UsageMetadata.CandidatesTokenCount),
+		}
+	}
+
 	return llmResp
 }

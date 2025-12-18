@@ -55,7 +55,7 @@ func TestRankAndPresent(t *testing.T) {
 	candidates := &EnrichedCandidates{}
 	requirements := &Requirements{}
 
-	result, err := rankAndPresent(client, candidates, requirements)
+	result, _, err := rankAndPresent(client, candidates, requirements)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}

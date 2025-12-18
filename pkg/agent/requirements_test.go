@@ -34,9 +34,9 @@ func TestAnalyzeRequirementsUnclear(t *testing.T) {
 		},
 	}
 
-	reqs, err := analyzeRequirements(client, "find someone")
+	reqs, _, err := analyzeRequirements(client, "Find senior Go devs in Lima")
 	if err != nil {
-		t.Fatalf("Expected no error from analysis itself, got %v", err)
+		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	if !reqs.UnclearRequest {
